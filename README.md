@@ -1,4 +1,10 @@
-# Welcome to our Takuzu_M1_SSD Project
+# Takuzu_M1_SSD 
+
+Welcome to our project for the HAX815X course for the academic year 2024-2025.
+Our project is titled **Takuzu_M1_SSD**.\
+The team members are :
+- AIGOIN Emilie
+- THOMAS Anne-Laure
 
 ## Introduction
 The goal of this project is to develop a library in the R language, including an interactive Shiny application for the game Takuzu (a variant of Binairo).
