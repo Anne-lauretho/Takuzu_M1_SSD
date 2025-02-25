@@ -1,5 +1,21 @@
-- taille de / des grilles
-- couleurs
-- outils (crayon, gomme, indice)
-- difficultés de niveau ?
-- onglet avec explication des règles
+– taille de / des grilles.
+
+– Faire différents niveaux : 6 x 6 pour le niveau facile, 8 x 8 pour le normal et 10 x 10 ou à 12 pour le niveau compliqué. 
+
+– Mettre aussi les étoiles, voir si c'est sur un intervalle de coup ou sur le temps.
+
+– couleurs (prendre en compte les daltoniens).
+
+– outils (crayon, gomme, indice).
+
+– Difficultés de niveau ?
+
+– Onglet avec explication des règles.
+
+– Mettre une barre de temps ou un nombre de coups éliminatoires. Ne pas oublier les réponses données (3 styles de baguettes magiques).
+
+– Faire accueil avec JOUER, REGLE ou PETITES HISTOIRES.
+
+– un espace avec tes meilleurs temps ou coups.
+
+– Faire caser ou colorer pour quand on a fait une hypothèse et que c'est faux, afin que quand il revient, ce soit plus facile à visualiser.
