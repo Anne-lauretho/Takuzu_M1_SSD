@@ -28,6 +28,11 @@ Takuzu is an accessible game but becomes increasingly complex as the grid size i
 Here is a diagram of the architecture of our project, detailing the location of each folder and file:
 
 ```Takuzu_M1_SSD/
+    ├── www/
+    │    └── takuzu.png
+    ├──.gitignore
+    ├── Application.R
     ├── Ideas.txt
+    ├── Maquette application Takuzu.png
     ├── README.md
     └── requirements.txt
