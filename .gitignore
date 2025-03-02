@@ -1,1 +1,7 @@
 .Rproj.user
+
+# Ignore .dstore files
+.DS_Store
+
+# Ignore .Rhistory files
+.Rhistory
