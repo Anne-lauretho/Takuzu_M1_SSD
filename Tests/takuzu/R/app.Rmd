@@ -1,0 +1,408 @@
+---
+title: "app"
+author: "AIGOIN Emilie"
+date: "2025-03-02"
+output: html_document
+---
+
+## Lancer l'application Shiny pour jouer au Takuzu
+ 
+```{r}
+
+# Importer les packages
+
+library(shiny)
+library(shinydashboard)
+library(shinyjs)
+
+```
+
+```{r}
+
+run_takuzu_app <- function() {
+  # Charger les packages nécessaires
+  if (!requireNamespace("shiny", quietly = TRUE)) {
+    install.packages("shiny")
+  }
+  if (!requireNamespace("shinydashboard", quietly = TRUE)) {
+    install.packages("shinydashboard")
+  }
+  if (!requireNamespace("shinyjs", quietly = TRUE)) {
+    install.packages("shinyjs")
+  }
+  
+    # Interface utilisateur
+  ui <- dashboardPage(
+    dashboardHeader(title = "Jeu Takuzu"),
+    dashboardSidebar(
+      sidebarMenu(
+        menuItem("Jouer", tabName = "play", icon = icon("gamepad")),
+        menuItem("Règles", tabName = "rules", icon = icon("book")),
+        menuItem("À propos", tabName = "about", icon = icon("info-circle"))
+      ),
+      
+      # Options de jeu
+      hr(),
+      selectInput("difficulty", "Difficulté:",
+                 choices = c("Facile", "Moyen", "Difficile"),
+                 selected = "Moyen"),
+      selectInput("size", "Taille de la grille:",
+                 choices = c("6x6", "8x8"),
+                 selected = "8x8"),
+      actionButton("new_game", "Nouvelle partie", 
+                  icon = icon("plus"), 
+                  class = "btn-success", 
+                  width = "100%"),
+      hr(),
+      actionButton("hint", "Indice", 
+                  icon = icon("lightbulb"), 
+                  width = "100%"),
+      actionButton("check", "Vérifier", 
+                  icon = icon("check"), 
+                  width = "100%"),
+      actionButton("solve", "Solution", 
+                  icon = icon("magic"), 
+                  width = "100%")
+    ),
+    dashboardBody(
+      useShinyjs(),
+      tags$head(
+        tags$style(HTML("
+          .cell-button {
+            width: 40px;
+            height: 40px;
+            margin: 2px;
+            font-weight: bold;
+            font-size: 18px;
+          }
+          .cell-0 {
+            background-color: #ADD8E6 !important;
+          }
+          .cell-1 {
+            background-color: #FFB6C1 !important;
+          }
+          .cell-initial {
+            font-weight: bold;
+            color: #000 !important;
+            cursor: not-allowed;
+          }
+          .board-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+          }
+          .game-message {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+          }
+          .timer {
+            font-size: 20px;
+            margin: 10px;
+            text-align: center;
+          }
+          .stats {
+            margin-top: 20px;
+            font-size: 16px;
+          }
+        "))
+      ),
+      tabItems(
+        # Onglet principal pour jouer
+        tabItem(tabName = "play",
+          fluidRow(
+            column(width = 12,
+              box(width = NULL, solidHeader = TRUE,
+                title = "Grille de jeu",
+                div(class = "timer", textOutput("timer")),
+                div(class = "board-container", uiOutput("board")),
+                div(class = "game-message", textOutput("message"))
+              )
+            )
+          ),
+          fluidRow(
+            column(width = 12,
+              box(width = NULL,
+                title = "Statistiques",
+                div(class = "stats",
+                  p("Mouvements: ", textOutput("moves_count", inline = TRUE)),
+                  p("Erreurs: ", textOutput("errors_count", inline = TRUE)),
+                  p("Indices utilisés: ", textOutput("hints_count", inline = TRUE))
+                )
+              )
+            )
+          )
+        ),
+        
+        # Onglet pour les règles
+        tabItem(tabName = "rules",
+          box(width = NULL,
+            title = "Règles du jeu Takuzu",
+            p("Le Takuzu (aussi appelé Binairo) est un jeu de logique qui se joue sur une grille carrée."),
+            h4("Règles:"),
+            tags$ul(
+              tags$li("Chaque case doit contenir un 0 ou un 1."),
+              tags$li("Chaque ligne et chaque colonne doivent contenir autant de 0 que de 1."),
+              tags$li("Il ne peut pas y avoir trois 0 ou trois 1 consécutifs dans une ligne ou une colonne."),
+              tags$li("Deux lignes ou deux colonnes ne peuvent pas être identiques.")
+            ),
+            h4("Astuces:"),
+            tags$ul(
+              tags$li("Si deux 0 ou deux 1 se suivent, la case suivante doit contenir l'autre chiffre."),
+              tags$li("Une ligne ou colonne ne peut pas avoir plus de la moitié des cases avec le même chiffre."),
+              tags$li("Utilisez les lignes et colonnes déjà remplies comme référence.")
+            )
+          )
+        ),
+        
+        # Onglet à propos
+        tabItem(tabName = "about",
+          box(width = NULL,
+            title = "À propos",
+            p("Cette application a été développée dans le cadre d'un projet universitaire."),
+            p("Auteur: [Votre nom]"),
+            p("Date: Février-Avril 2025"),
+            p("Université: [Votre université]")
+          )
+        )
+      )
+    )
+  )
+  
+  # Logique du serveur
+  server <- function(input, output, session) {
+    # Variables réactives
+    game_state <- reactiveValues(
+      board = NULL,
+      solution = NULL,
+      initial_board = NULL,
+      size = 8,
+      difficulty = "moyen",
+      moves = 0,
+      errors = 0,
+      hints = 0,
+      start_time = Sys.time(),
+      game_over = FALSE
+    )
+    
+    # Fonction pour initialiser une nouvelle partie
+    start_new_game <- function() {
+      size <- as.numeric(substr(input$size, 1, 1))
+      difficulty <- tolower(input$difficulty)
+      
+      game <- create_takuzu_board(size, difficulty)
+      
+      game_state$board <- game$board
+      game_state$solution <- game$solution
+      game_state$initial_board <- game$board
+      game_state$size <- size
+      game_state$difficulty <- difficulty
+      game_state$moves <- 0
+      game_state$errors <- 0
+      game_state$hints <- 0
+      game_state$start_time <- Sys.time()
+      game_state$game_over <- FALSE
+      
+      output$message <- renderText("")
+    }
+    
+    # Observer pour la nouvelle partie
+    observeEvent(input$new_game, {
+      start_new_game()
+    })
+    
+    # Initialiser au chargement
+    observe({
+      # Ne s'exécute qu'une fois au démarrage
+      if (is.null(game_state$board)) {
+        start_new_game()
+      }
+    })
+    
+    # Créer l'affichage de la grille
+    output$board <- renderUI({
+      req(game_state$board)
+      size <- game_state$size
+      
+      # Créer une table pour la grille
+      board_table <- lapply(1:size, function(i) {
+        row <- lapply(1:size, function(j) {
+          
+          value <- game_state$board[i, j]
+          is_initial <- !is.na(game_state$initial_board[i, j])
+          
+          # Classes CSS pour le style du bouton
+          btn_class <- "cell-button"
+          if (!is.na(value)) {
+            btn_class <- paste(btn_class, paste0("cell-", value))
+          }
+          if (is_initial) {
+            btn_class <- paste(btn_class, "cell-initial")
+          }
+          
+          # Texte à afficher
+          btn_text <- ifelse(is.na(value), "", as.character(value))
+          
+          # Créer le bouton pour cette cellule
+          actionButton(
+            inputId = paste0("cell_", i, "_", j),
+            label = btn_text,
+            class = btn_class,
+            onclick = ifelse(is_initial, 
+                            "return false;",  # Non cliquable si c'est une cellule initiale
+                            NULL)
+          )
+        })
+        
+        # Créer une ligne de la grille
+        div(style = "display: flex; justify-content: center;", row)
+      })
+      
+      # Assembler les lignes
+      do.call(tagList, board_table)
+    })
+    
+    # Gestion des clics sur les cellules
+    observe({
+      req(game_state$board)
+      size <- game_state$size
+      
+      # Pour chaque cellule de la grille
+      for (i in 1:size) {
+        for (j in 1:size) {
+          # Créer un observateur pour cette cellule
+          local({
+            local_i <- i
+            local_j <- j
+            
+            cell_id <- paste0("cell_", local_i, "_", local_j)
+            
+            # Observer les clics
+            observeEvent(input[[cell_id]], {
+              # Ignorer si c'est une cellule initiale ou si le jeu est terminé
+              if (!is.na(game_state$initial_board[local_i, local_j]) || game_state$game_over) {
+                return()
+              }
+              
+              # Obtenir la valeur actuelle et calculer la nouvelle
+              current_value <- game_state$board[local_i, local_j]
+              
+              if (is.na(current_value)) {
+                new_value <- 0
+              } else if (current_value == 0) {
+                new_value <- 1
+              } else {
+                new_value <- NA  # Retour à vide
+              }
+              
+              # Mettre à jour la grille
+              game_state$board[local_i, local_j] <- new_value
+              game_state$moves <- game_state$moves + 1
+              
+              # Vérifier si le jeu est terminé
+              if (is_board_complete(game_state$board)) {
+                game_state$game_over <- TRUE
+                duration <- difftime(Sys.time(), game_state$start_time, units = "mins")
+                output$message <- renderText(paste("Bravo! Vous avez résolu la grille en", 
+                                                  round(as.numeric(duration), 1), 
+                                                  "minutes."))
+              }
+            })
+          })
+        }
+      }
+    })
+    
+    # Gestion du bouton d'indice
+    observeEvent(input$hint, {
+      if (game_state$game_over) return()
+      
+      hint <- get_hint(game_state$board, game_state$solution)
+      if (!is.null(hint)) {
+        game_state$board[hint$row, hint$col] <- hint$value
+        game_state$hints <- game_state$hints + 1
+        
+        # Mettre en évidence brièvement la cellule indice
+        cell_id <- paste0("cell_", hint$row, "_", hint$col)
+        runjs(paste0("$('#", cell_id, "').addClass('btn-warning');"))
+        shinyjs::delay(1000, runjs(paste0("$('#", cell_id, "').removeClass('btn-warning');")))
+        
+        output$message <- renderText(paste("Indice: placé", hint$value, "à la position (", 
+                                          hint$row, ",", hint$col, ")"))
+      }
+    })
+    
+    # Gestion du bouton de vérification
+    observeEvent(input$check, {
+      if (game_state$game_over) return()
+      
+      # Compter les erreurs
+      errors <- 0
+      size <- game_state$size
+      
+      for (i in 1:size) {
+        for (j in 1:size) {
+          current <- game_state$board[i, j]
+          solution <- game_state$solution[i, j]
+          
+          if (!is.na(current) && current != solution) {
+            errors <- errors + 1
+            
+            # Mettre en évidence brièvement les erreurs
+            cell_id <- paste0("cell_", i, "_", j)
+            runjs(paste0("$('#", cell_id, "').addClass('btn-danger');"))
+            shinyjs::delay(2000, runjs(paste0("$('#", cell_id, "').removeClass('btn-danger');")))
+          }
+        }
+      }
+      
+      if (errors > 0) {
+        game_state$errors <- game_state$errors + errors
+        output$message <- renderText(paste("Il y a", errors, "erreurs dans votre grille."))
+      } else {
+        output$message <- renderText("Tout est correct jusqu'à présent!")
+      }
+    })
+    
+    # Gestion du bouton de solution
+    observeEvent(input$solve, {
+      game_state$board <- game_state$solution
+      game_state$game_over <- TRUE
+      output$message <- renderText("Voici la solution complète.")
+    })
+    
+    # Affichage du timer
+    output$timer <- renderText({
+      invalidateLater(1000, session)  # Mettre à jour chaque seconde
+      if (game_state$game_over) return(NULL)
+      
+      duration <- difftime(Sys.time(), game_state$start_time, units = "secs")
+      mins <- floor(as.numeric(duration) / 60)
+      secs <- floor(as.numeric(duration) %% 60)
+      sprintf("Temps: %02d:%02d", mins, secs)
+    })
+    
+    # Statistiques
+    output$moves_count <- renderText({
+      game_state$moves
+    })
+    
+    output$errors_count <- renderText({
+      game_state$errors
+    })
+    
+    output$hints_count <- renderText({
+      game_state$hints
+    })
+  }
+  
+    # Lancer l'application
+  shinyApp(ui, server)
+}
+
+```
+
+
+
+
+

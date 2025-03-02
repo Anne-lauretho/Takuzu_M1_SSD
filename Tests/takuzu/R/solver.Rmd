@@ -1,0 +1,109 @@
+---
+title: "solver"
+author: "AIGOIN Emilie"
+date: "2025-03-02"
+output: html_document
+---
+
+## Générer une solution valide pour une grille de Takuzu
+
+@param size   :   Taille de la grille
+@return       :   Une matrice contenant une solution valide
+@export
+
+```{r}
+
+generate_valid_solution <- function(size = 8) {
+  # Créer une grille vide
+  board <- matrix(NA, nrow = size, ncol = size)
+  
+  # Tenter de remplir la grille de manière récursive
+  if (solve_board(board, 1, 1)) {
+    return(board)
+  } else {
+    stop("Impossible de générer une solution valide")
+  }
+}
+
+```
+
+
+## Fonction récursive pour résoudre la grille
+ 
+@param board   :   Grille actuelle
+@param row     :   Ligne courante
+@param col     :   Colonne courante
+@return       :    Booléen indiquant si une solution a été trouvée
+
+```{r}
+
+solve_board <- function(board, row, col) {
+  size <- nrow(board)
+  
+  # Si nous avons atteint la fin de la grille, vérifier si elle est valide
+  if (row > size) {
+    return(is_board_complete(board))
+  }
+  
+  # Calculer la prochaine position
+  next_col <- col + 1
+  next_row <- row
+  if (next_col > size) {
+    next_col <- 1
+    next_row <- row + 1
+  }
+  
+  # Si la case est déjà remplie, passer à la suivante
+  if (!is.na(board[row, col])) {
+    return(solve_board(board, next_row, next_col))
+  }
+  
+  # Essayer avec 0 puis 1
+  for (value in c(0, 1)) {
+    check <- is_valid_move(board, row, col, value)
+    if (check$valid) {
+      board[row, col] <- value
+      if (solve_board(board, next_row, next_col)) {
+        return(TRUE)
+      }
+      board[row, col] <- NA  # Annuler le mouvement si ça ne mène pas à une solution
+    }
+  }
+  
+  return(FALSE)
+}
+
+```
+
+## Donner un indice pour la prochaine case à remplir
+
+@param board     :   Grille actuelle
+@param solution  :   Solution complète
+@return          :   Liste avec la ligne, colonne et valeur de l'indice
+@export
+
+```{r}
+
+get_hint <- function(board, solution) {
+  size <- nrow(board)
+  
+  # Trouver une case vide
+  empty_cells <- which(is.na(board), arr.ind = TRUE)
+  if (nrow(empty_cells) == 0) {
+    return(NULL)  # Aucune case vide
+  }
+  
+  # Prendre une case aléatoire parmi les vides
+  cell_idx <- sample(1:nrow(empty_cells), 1)
+  row <- empty_cells[cell_idx, 1]
+  col <- empty_cells[cell_idx, 2]
+  
+  return(list(
+    row = row,
+    col = col,
+    value = solution[row, col]
+  ))
+}
+
+```
+

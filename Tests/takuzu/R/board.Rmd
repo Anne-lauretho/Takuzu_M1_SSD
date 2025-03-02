@@ -1,0 +1,51 @@
+---
+title: "board"
+author: "AIGOIN Emilie"
+date: "2025-03-02"
+output: html_document
+---
+
+## Créer une nouvelle grille de Takuzu
+
+@param size        :   Taille de la grille (par défaut 8x8)
+@param difficulty  :   Niveau de difficulté (facile, moyen, difficile)
+@return            :   Une liste contenant la grille initiale et la solution
+@export
+
+```{r}
+
+create_takuzu_board <- function(size = 8, difficulty = "moyen") {
+  # Créer une grille vide (NA représente les cases vides)
+  board <- matrix(NA, nrow = size, ncol = size)
+  
+  # Créer une solution valide
+  solution <- generate_valid_solution(size)
+  
+  # Déterminer combien de cases révéler selon la difficulté
+  reveal_percentage <- switch(difficulty,
+                             "facile" = 0.5,
+                             "moyen" = 0.4,
+                             "difficile" = 0.3,
+                             0.4)  # Par défaut: moyen
+  
+  cells_to_reveal <- floor(size * size * reveal_percentage)
+  
+  # Sélectionner aléatoirement les cases à révéler
+  indices <- sample(1:(size*size), cells_to_reveal)
+  for (idx in indices) {
+    row <- ceiling(idx / size)
+    col <- idx %% size
+    if (col == 0) col <- size
+    board[row, col] <- solution[row, col]
+  }
+  
+  return(list(
+    board = board,
+    solution = solution,
+    size = size,
+    difficulty = difficulty
+  ))
+}
+
+```
+

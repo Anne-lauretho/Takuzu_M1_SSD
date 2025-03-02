@@ -1,0 +1,150 @@
+---
+title: "game_logic"
+author: "AIGOIN Emilie"
+date: "2025-03-02"
+output: html_document
+---
+
+## Vérifier si un mouvement est valide selon les règles du Takuzu
+
+@param board :   La grille actuelle
+@param row   :   Ligne du mouvement
+@param col   :   Colonne du mouvement
+@param value :   Valeur à placer (0 ou 1)
+@return      :   Booléen indiquant si le mouvement est valide et message d'erreur
+@export
+
+```{r}
+
+is_valid_move <- function(board, row, col, value) {
+  size <- nrow(board)
+  
+  # Créer une copie de la grille avec le nouveau mouvement
+  test_board <- board
+  test_board[row, col] <- value
+  
+  # Vérifier la règle des trois consécutifs dans la ligne
+  if (col >= 3 && 
+      test_board[row, col-2] == value && 
+      test_board[row, col-1] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la ligne"))
+  }
+  if (col <= size-2 && 
+      test_board[row, col+1] == value && 
+      test_board[row, col+2] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la ligne"))
+  }
+  if (col >= 2 && col <= size-1 &&
+      test_board[row, col-1] == value && 
+      test_board[row, col+1] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la ligne"))
+  }
+  
+  # Vérifier la règle des trois consécutifs dans la colonne
+  if (row >= 3 && 
+      test_board[row-2, col] == value && 
+      test_board[row-1, col] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la colonne"))
+  }
+  if (row <= size-2 && 
+      test_board[row+1, col] == value && 
+      test_board[row+2, col] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la colonne"))
+  }
+  if (row >= 2 && row <= size-1 &&
+      test_board[row-1, col] == value && 
+      test_board[row+1, col] == value) {
+    return(list(valid = FALSE, message = "Trois valeurs consécutives dans la colonne"))
+  }
+  
+  # Vérifier l'équilibre des 0 et 1 dans la ligne
+  count_0 <- sum(test_board[row, ] == 0, na.rm = TRUE)
+  count_1 <- sum(test_board[row, ] == 1, na.rm = TRUE)
+  if (count_0 > size/2 || count_1 > size/2) {
+    return(list(valid = FALSE, message = "Trop de 0 ou de 1 dans la ligne"))
+  }
+  
+  # Vérifier l'équilibre des 0 et 1 dans la colonne
+  count_0 <- sum(test_board[, col] == 0, na.rm = TRUE)
+  count_1 <- sum(test_board[, col] == 1, na.rm = TRUE)
+  if (count_0 > size/2 || count_1 > size/2) {
+    return(list(valid = FALSE, message = "Trop de 0 ou de 1 dans la colonne"))
+  }
+  
+  # Si toutes les vérifications sont passées
+  return(list(valid = TRUE, message = "Mouvement valide"))
+}
+
+```
+
+## Vérifier si la grille est complétée et valide
+
+@param board   :   La grille actuelle
+@return        :   Booléen indiquant si la grille est complète et valide
+@export
+
+```{r}
+
+is_board_complete <- function(board) {
+  size <- nrow(board)
+  
+  # Vérifier s'il reste des cases vides
+  if (any(is.na(board))) {
+    return(FALSE)
+  }
+  
+  # Vérifier l'équilibre des 0 et 1 dans chaque ligne
+  for (i in 1:size) {
+    if (sum(board[i, ] == 0) != sum(board[i, ] == 1)) {
+      return(FALSE)
+    }
+  }
+  
+  # Vérifier l'équilibre des 0 et 1 dans chaque colonne
+  for (j in 1:size) {
+    if (sum(board[, j] == 0) != sum(board[, j] == 1)) {
+      return(FALSE)
+    }
+  }
+  
+  # Vérifier qu'il n'y a pas trois 0 ou 1 consécutifs dans les lignes
+  for (i in 1:size) {
+    for (j in 1:(size-2)) {
+      if (board[i, j] == board[i, j+1] && board[i, j] == board[i, j+2]) {
+        return(FALSE)
+      }
+    }
+  }
+  
+  # Vérifier qu'il n'y a pas trois 0 ou 1 consécutifs dans les colonnes
+  for (j in 1:size) {
+    for (i in 1:(size-2)) {
+      if (board[i, j] == board[i+1, j] && board[i, j] == board[i+2, j]) {
+        return(FALSE)
+      }
+    }
+  }
+  
+  # Vérifier qu'il n'y a pas deux lignes identiques
+  for (i in 1:(size-1)) {
+    for (j in (i+1):size) {
+      if (all(board[i, ] == board[j, ])) {
+        return(FALSE)
+      }
+    }
+  }
+  
+  # Vérifier qu'il n'y a pas deux colonnes identiques
+  for (i in 1:(size-1)) {
+    for (j in (i+1):size) {
+      if (all(board[, i] == board[, j])) {
+        return(FALSE)
+      }
+    }
+  }
+  
+  return(TRUE)
+}
+
+```
+
