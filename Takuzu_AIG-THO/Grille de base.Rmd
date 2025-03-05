@@ -1,0 +1,186 @@
+---
+title: "Test"
+author: "AIGOIN Emilie"
+date: "2025-03-05"
+output: html_document
+---
+
+Grille de Takuzu valide mais avec tout les chiffres.
+
+```{r}
+
+library(shiny)
+library(shinydashboard)
+library(shinyjs)
+
+# Fonction de génération de grille Takuzu
+generate_takuzu_grid <- function(n = 6) {
+  # Créer une grille vide de n x n
+  grid <- matrix(rep("", n * n), nrow = n)
+  
+  # Fonction pour vérifier la validité après ajout d'une valeur
+  check_valid <- function(grid, row, col, value) {
+    grid[row, col] <- value
+    
+    # Vérification des limites de 0 et 1
+    if (sum(grid[row, ] == "0") > n / 2 || sum(grid[row, ] == "1") > n / 2) return(FALSE)
+    if (sum(grid[, col] == "0") > n / 2 || sum(grid[, col] == "1") > n / 2) return(FALSE)
+    
+    # Vérification des séquences consécutives
+    row_seq <- rle(grid[row, ])
+    col_seq <- rle(grid[, col])
+    
+    if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+        any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
+    
+    if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+        any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
+    
+    return(TRUE)
+  }
+  
+  # Fonction de backtracking
+  backtrack <- function(grid, row = 1, col = 1) {
+    if (row > n) return(grid)
+    
+    if (col > n) {
+      return(backtrack(grid, row + 1, 1))
+    }
+    
+    for (value in c("0", "1")) {
+      if (check_valid(grid, row, col, value)) {
+        grid[row, col] <- value
+        result <- backtrack(grid, row, col + 1)
+        if (!is.null(result)) return(result)
+        grid[row, col] <- ""
+      }
+    }
+    
+    return(NULL)
+  }
+  
+  # Générer la grille
+  generated_grid <- backtrack(grid)
+  
+  return(generated_grid)
+}
+
+# UI
+ui <- fluidPage(
+  useShinyjs(),
+  titlePanel("Jeu de Takuzu"),
+  
+  # Grille interactive
+  uiOutput("grid_ui"),
+  
+  # Boutons de contrôle
+  fluidRow(
+    column(6, actionButton("check_btn", "Vérifier la grille")),
+    column(6, actionButton("new_game_btn", "Nouvelle partie"))
+  )
+)
+
+# Serveur
+server <- function(input, output, session) {
+  # Réactif pour stocker la grille
+  game_grid <- reactiveVal(generate_takuzu_grid(6))
+  
+  # Génération dynamique de la grille UI
+  output$grid_ui <- renderUI({
+    grid <- game_grid()
+    
+    tags$div(
+      style = "display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 300px; margin: auto;",
+      lapply(1:6, function(row) {
+        lapply(1:6, function(col) {
+          actionButton(
+            inputId = paste0("btn_", row, "_", col),
+            label = grid[row, col],
+            style = "width: 100%; aspect-ratio: 1 / 1; font-size: 16px; background-color: white;"
+          )
+        })
+      })
+    )
+  })
+  
+  # Gestion des clics sur les cellules
+  lapply(1:6, function(row) {
+    lapply(1:6, function(col) {
+      btn_id <- paste0("btn_", row, "_", col)
+      
+      observeEvent(input[[btn_id]], {
+        grid <- game_grid()
+        current_state <- grid[row, col]
+        
+        # Changement cyclique : vide → 0 → 1 → vide
+        new_state <- ifelse(current_state == "", "0",
+                            ifelse(current_state == "0", "1", ""))
+        
+        grid[row, col] <- new_state
+        game_grid(grid)
+        
+        # Mise à jour du bouton
+        updateActionButton(session, btn_id, label = new_state)
+      })
+    })
+  })
+  
+  # Vérification de la grille
+  observeEvent(input$check_btn, {
+    grid <- game_grid()
+    if (check_game_rules(grid)) {
+      showModal(modalDialog(
+        title = "Félicitations!",
+        "La grille est valide!"
+      ))
+    } else {
+      showModal(modalDialog(
+        title = "Erreur",
+        "La grille n'est pas valide. Continuez à essayer!"
+      ))
+    }
+  })
+  
+  # Fonction de vérification des règles
+  check_game_rules <- function(grid) {
+    n <- nrow(grid)
+    
+    # Vérification de l'équilibre des 0 et 1
+    for (i in 1:n) {
+      if (sum(grid[i, ] == "0") != sum(grid[i, ] == "1") || 
+          sum(grid[, i] == "0") != sum(grid[, i] == "1")) {
+        return(FALSE)
+      }
+    }
+    
+    # Vérification des séquences
+    for (i in 1:n) {
+      row_seq <- rle(grid[i, ])
+      col_seq <- rle(grid[, i])
+      
+      if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+          any(row_seq$lengths[row_seq$values == "1"] >= 3)) {
+        return(FALSE)
+      }
+      
+      if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+          any(col_seq$lengths[col_seq$values == "1"] >= 3)) {
+        return(FALSE)
+      }
+    }
+    
+    return(TRUE)
+  }
+  
+  # Nouvelle partie
+  observeEvent(input$new_game_btn, {
+    new_grid <- generate_takuzu_grid(6)
+    game_grid(new_grid)
+  })
+}
+
+# Lancer l'application
+shinyApp(ui, server)
+
+```
+

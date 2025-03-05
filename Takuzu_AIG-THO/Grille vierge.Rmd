@@ -1,0 +1,90 @@
+---
+title: "Test"
+author: "AIGOIN Emilie"
+date: "2025-03-05"
+output: html_document
+---
+
+Grille vierge de Takuzu interactive.
+
+```{r}
+
+# Télécharger les packages
+
+library(shiny)
+library(shinydashboard)
+library(DT)
+library(shinycssloaders)
+library(shinyjs)
+
+```
+
+```{r}
+
+# UI - Interface utilisateur
+
+library(shiny)
+
+ui <- fluidPage(
+  titlePanel("Grille interactive de 6x6"),
+  
+  tags$div(
+    style = "display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 300px; margin: auto;",
+    
+    lapply(1:6, function(row) {
+      lapply(1:6, function(col) {
+        actionButton(
+          inputId = paste0("btn_", row, "_", col),
+          label = "",  # Départ vide
+          style = "width: 100%; aspect-ratio: 1 / 1; font-size: 16px;"
+        )
+      })
+    })
+  )
+)
+
+```
+
+
+```{r}
+
+# Serveur
+
+server <- function(input, output, session) {
+  # Initialisation des états des boutons sous forme de liste nommée
+  btn_states <- reactiveVal(
+    setNames(as.list(rep("", 6 * 6)), paste0("btn_", rep(1:6, each = 6), "_", rep(1:6, times = 6)))
+  )
+  
+  # Boucle sur toutes les cellules pour gérer les clics
+  lapply(1:6, function(row) {
+    lapply(1:6, function(col) {
+      btn_id <- paste0("btn_", row, "_", col)
+      
+      observeEvent(input[[btn_id]], {
+        states <- btn_states()  # Récupérer les états actuels
+        current_state <- states[[btn_id]]  # État du bouton cliqué
+        
+        # Changer d'état (vide → 0 → 1 → vide)
+        new_state <- ifelse(current_state == "", "0",
+                            ifelse(current_state == "0", "1", ""))
+        
+        states[[btn_id]] <- new_state  # Mettre à jour la valeur
+        btn_states(states)  # Enregistrer la mise à jour
+        updateActionButton(session, btn_id, label = new_state)  # Appliquer l'affichage
+      })
+    })
+  })
+}
+```
+
+
+```{r}
+
+# Lancer l'application
+
+shinyApp(ui, server)
+
+```
+
+
