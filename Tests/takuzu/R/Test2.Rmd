@@ -1,0 +1,149 @@
+---
+title: "Test2"
+author: "AIGOIN Emilie"
+date: "2025-03-05"
+output: html_document
+---
+
+
+```{r}
+
+library(shiny)
+library(shinydashboard)
+library(shinyjs)
+
+# Fonctions de génération et de vérification de la grille
+create_takuzu_board <- function(size = 8, difficulty = "moyen") {
+  # Fonction temporaire pour générer une grille
+  board <- matrix(sample(c(NA, 0, 1), size * size, replace = TRUE), nrow = size, ncol = size)
+  solution <- board  # Simuler une solution
+  
+  return(list(
+    board = board,
+    solution = solution,
+    initial_board = board
+  ))
+}
+
+is_board_complete <- function(board) {
+  # Vérification simple de la complétude de la grille
+  !any(is.na(board))
+}
+
+get_hint <- function(board, solution) {
+  # Trouver une case vide et donner sa valeur de la solution
+  empty_cells <- which(is.na(board), arr.ind = TRUE)
+  
+  if (length(empty_cells) > 0) {
+    hint_index <- sample(1:nrow(empty_cells), 1)
+    hint_cell <- empty_cells[hint_index, ]
+    
+    return(list(
+      row = hint_cell[1],
+      col = hint_cell[2],
+      value = solution[hint_cell[1], hint_cell[2]]
+    ))
+  }
+  
+  return(NULL)
+}
+
+# Fonction principale pour lancer l'application
+run_takuzu_app <- function() {
+  # [Votre code d'interface utilisateur et de serveur reste le même]
+  ui <- dashboardPage(
+    dashboardHeader(title = "Jeu Takuzu"),
+    dashboardSidebar(
+      sidebarMenu(
+        menuItem("Jouer", tabName = "play", icon = icon("gamepad")),
+        menuItem("Règles", tabName = "rules", icon = icon("book")),
+        menuItem("À propos", tabName = "about", icon = icon("info-circle"))
+      ),
+      
+      # Options de jeu
+      hr(),
+      selectInput("difficulty", "Difficulté:",
+                 choices = c("Facile", "Moyen", "Difficile"),
+                 selected = "Moyen"),
+      selectInput("size", "Taille de la grille:",
+                 choices = c("6x6", "8x8"),
+                 selected = "8x8"),
+      actionButton("new_game", "Nouvelle partie", 
+                  icon = icon("plus"), 
+                  class = "btn-success", 
+                  width = "100%"),
+      hr(),
+      actionButton("hint", "Indice", 
+                  icon = icon("lightbulb"), 
+                  width = "100%"),
+      actionButton("check", "Vérifier", 
+                  icon = icon("check"), 
+                  width = "100%"),
+      actionButton("solve", "Solution", 
+                  icon = icon("magic"), 
+                  width = "100%")
+    ),
+    dashboardBody(
+      # [Votre code de style et de corps reste le même]
+      useShinyjs(),
+      tags$head(
+        tags$style(HTML("
+          .cell-button {
+            width: 40px;
+            height: 40px;
+            margin: 2px;
+            font-weight: bold;
+            font-size: 18px;
+          }
+          .cell-0 {
+            background-color: #ADD8E6 !important;
+          }
+          .cell-1 {
+            background-color: #FFB6C1 !important;
+          }
+          .cell-initial {
+            font-weight: bold;
+            color: #000 !important;
+            cursor: not-allowed;
+          }
+          .board-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+          }
+          .game-message {
+            margin-top: 20px;
+            font-weight: bold;
+            text-align: center;
+          }
+          .timer {
+            font-size: 20px;
+            margin: 10px;
+            text-align: center;
+          }
+          .stats {
+            margin-top: 20px;
+            font-size: 16px;
+          }
+        "))
+      ),
+      tabItems(
+        # Le reste de votre code tabItems reste le même
+      )
+    )
+  )
+  
+  # [Votre code de serveur reste le même]
+  server <- function(input, output, session) {
+    # Votre code de serveur reste inchangé
+  }
+  
+  # Lancer l'application
+  shinyApp(ui, server)
+}
+
+# Pour lancer l'application, appelez simplement la fonction
+run_takuzu_app()
+
+```
+

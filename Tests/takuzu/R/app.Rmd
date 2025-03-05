@@ -11,7 +11,7 @@ output: html_document
 
 # Importer les packages
 
-library(shiny)
+library(shiny)Bonjour, 
 library(shinydashboard)
 library(shinyjs)
 
