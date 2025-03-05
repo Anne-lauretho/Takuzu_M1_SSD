@@ -94,6 +94,10 @@ ui <- fluidPage(
         position: relative;
         z-index: 20; /* Cadre en avant-plan */
       }
+
+      .description {
+        color: black;
+      }
     "))
   ),
   
@@ -121,8 +125,17 @@ server <- function(input, output, session) {
     removeUI(selector = "#buttons")
     output$content <- renderUI({
       tagList(
-        h2("Bienvenue dans le jeu Takuzu !")
-        # A REMPLIR
+        h2("Niveaux"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back", "Retour", class = "btn-custom")
       )
     })
   })
