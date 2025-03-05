@@ -1,159 +1,175 @@
-install.packages(c("shiny", "shinydashboard", "DT"))
-install.packages("shinycssloaders")
-install.packages("shinyjs")
-
-# Chargement des bibliothèques
 library(shiny)
 library(shinydashboard)
 library(DT)
 library(shinycssloaders)
 library(shinyjs)
 
-# Fonction pour générer une grille vide en fonction du niveau avec des traits de séparation
-generate_grid <- function(level) {
-  size <- switch(level,
-                 "Facile" = 6,
-                 "Moyen" = 8,
-                 "Difficile" = 10,
-                 4)
-  grid <- matrix("", nrow = size, ncol = size)
-  colnames(grid) <- seq(1, size)
-  rownames(grid) <- seq(1, size)
-  grid
-}
-
 # UI - Interface utilisateur
-ui <- dashboardPage(
-  skin = "purple",
-  dashboardHeader(title = "Takuzu_M1_SSD"),
-  
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Règles", tabName = "rules", icon = icon("book")),
-      menuItem("Jouer", tabName = "play", icon = icon("gamepad")),
-      menuItem("Records", tabName = "records", icon = icon("trophy"))
-    )
+ui <- fluidPage(
+  useShinyjs(),  # Utiliser shinyjs pour pouvoir cacher les éléments
+  tags$head(
+    tags$style(HTML("
+      body {
+        background-color: #D8BFD8;
+        color: white;
+        text-align: center;
+        overflow: hidden;
+      }
+      
+      .title {
+        font-size: 50px;
+        font-weight: bold;
+        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-custom {
+        background: linear-gradient(to bottom, #FFD700, #FFA500);
+        border: 3px solid #B87333;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        width: 220px;
+        height: 60px;
+        margin: 15px;
+        border-radius: 15px;
+        box-shadow: 4px 4px 6px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 10; /* Les boutons restent au premier plan */
+      }
+
+      .btn-custom:hover {
+        background: linear-gradient(to bottom, #FFEE88, #FFBB33);
+      }
+
+      .cloud-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0; /* Nuages en arrière-plan */
+      }
+
+      .cloud {
+        position: absolute;
+        background: white;
+        width: 120px;
+        height: 70px;
+        border-radius: 50%;
+        box-shadow: 30px 10px 0 10px white, -30px 10px 0 10px white;
+        opacity: 0.7;
+        animation: float 12s linear infinite alternate;
+        z-index: 0; /* S'assurer que les nuages sont en arrière-plan */
+      }
+
+      .cloud:nth-child(1) { top: 5%; left: 10%; animation-duration: 14s; }
+      .cloud:nth-child(2) { top: 20%; left: 50%; animation-duration: 12s; }
+      .cloud:nth-child(3) { top: 35%; left: 80%; animation-duration: 16s; }
+      .cloud:nth-child(4) { top: 50%; left: 20%; animation-duration: 18s; }
+      .cloud:nth-child(5) { top: 65%; left: 60%; animation-duration: 15s; }
+      .cloud:nth-child(6) { top: 80%; left: 30%; animation-duration: 17s; }
+      .cloud:nth-child(7) { top: 90%; left: 70%; animation-duration: 13s; }
+
+      @keyframes float {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(40px); }
+      }
+
+      .button-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+
+      .rules-container {
+        background-color: rgba(255, 255, 255, 0.8);
+        color: black;
+        border: 3px solid #B87333;
+        padding: 20px;
+        margin: 50px auto;
+        width: 70%;
+        box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        position: relative;
+        z-index: 20; /* Cadre en avant-plan */
+      }
+    "))
   ),
   
-  dashboardBody(
-    useShinyjs(),
-    tags$head(tags$style(HTML("
-      .dataTable td, .dataTable th {
-        text-align: center;
-        vertical-align: middle;
-        width: 40px;
-        height: 40px;
-      }
-      .dataTables_wrapper {
-        margin: 0 auto;
-      }
-      .table-bordered {
-        border: 1px solid #ddd;
-      }
-      .table-bordered td, .table-bordered th {
-        border: 1px solid #ddd !important;
-      }
-    "))),
-    tabItems(
-      
-      # Onglet "Règles"
-      tabItem(tabName = "rules",
-              h2("Les règles du Takuzu"),
-              p("Le Takuzu est un jeu de logique avec les règles suivantes :"),
-              tags$ul(
-                tags$li("Chaque ligne et chaque colonne doit contenir autant de 0 que de 1."),
-                tags$li("Il ne peut pas y avoir plus de deux 0 ou deux 1 consécutifs."),
-                tags$li("Chaque ligne et chaque colonne doit être unique."),
-                tags$li("Remplissez la grille en respectant ces contraintes !")
-              ),
-              img(src = "www/takuzu.png", width = "50%")
-      ),
-      
-      # Onglet "Jouer"
-      tabItem(tabName = "play",
-              fluidRow(
-                column(width = 4,
-                       h3("Bon jeu !"),
-                       box(
-                         title = "Paramètres", solidHeader = TRUE, status = "warning", width = 12,
-                         selectInput("level", "Niveau", choices = c("Facile", "Moyen", "Difficile")),
-                         selectInput("errors", "Nombre d'erreurs autorisées", choices = c(3, 5, 10)),
-                         selectInput("hints", "Aides", choices = c(1, 3, 5)),
-                         div(style = "text-align:center;",
-                             img(src = "www/magic_wand.png", height = "30px"), 
-                             img(src = "www/magic_wand.png", height = "30px"), 
-                             img(src = "www/magic_wand.png", height = "30px")
-                         ),
-                         verbatimTextOutput("timer"),
-                         actionButton("validate", "Valider la grille") # Bouton de validation
-                       )
-                ),
-                column(width = 8,
-                       h4("Grille de jeu"),
-                       withSpinner(DTOutput("takuzu_grid"), type = 6) # Grille interactive avec chargement
-                )
-              ),
-              verbatimTextOutput("validity_result") # Afficher le résultat de la validation
-      ),
-      
-      # Onglet "Records"
-      tabItem(tabName = "records",
-              h2("Records des joueurs"),
-              DTOutput("record_table")
-      )
-    )
-  )
+  div(class = "cloud-container",
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud")
+  ),
+  
+  div(id = "buttons", class = "button-container",
+      h1(class = "title", "Takuzu Game"),
+      actionButton("play", "Jouer", class = "btn-custom"),
+      br(),
+      actionButton("rules", "Règles", class = "btn-custom"),
+      br(),
+      actionButton("records", "Records", class = "btn-custom")
+  ),
+  
+  uiOutput("content")
 )
 
-# Serveur - Logique de l'application
+# Serveur
 server <- function(input, output, session) {
-  # Grille initiale
-  grid <- reactiveVal(generate_grid("Facile"))
-  
-  # Générer une nouvelle grille en fonction du niveau sélectionné
-  observeEvent(input$level, {
-    grid(generate_grid(input$level))
-  })
-  
-  # Afficher la grille
-  output$takuzu_grid <- renderDT({
-    datatable(grid(), selection = "none", editable = TRUE,
-              options = list(dom = "t", ordering = FALSE, 
-                             rowCallback = JS('function(row, data, index) {
-                              $(row).children().each(function(i){
-                                $(this).css("border", "1px solid #ddd");
-                              });
-                            }')
-              ), class = 'table-bordered')
-  }, server = FALSE)
-  
-  # Vérifier la validité de la grille
-  observeEvent(input$validate, {
-    validity <- check_validity(grid())
-    output$validity_result <- renderText({
-      if (validity) {
-        "La grille est valide !"
-      } else {
-        "La grille n'est pas valide. Réessayez !"
-      }
+  observeEvent(input$play, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      tagList(
+        h2("Bienvenue dans le jeu Takuzu !")
+        # A REMPLIR
+      )
     })
   })
   
-  # Timer (simulé ici comme un texte statique)
-  output$timer <- renderText({
-    paste("Temps écoulé : 00:00") #A changé
+  observeEvent(input$rules, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      div(class = "rules-container",
+          h2("Règles du jeu"),
+          p("Chaque cellule de la grille doit être remplie soit par un 0, soit par un 1."),
+          p("Chaque ligne et chaque colonne doivent contenir un nombre égal de 0 et de 1."),
+          p("Il est interdit d'avoir trois 0 consécutifs ou trois 1 consécutifs dans une ligne ou une colonne."),
+          p("Deux lignes ou deux colonnes identiques ne sont pas autorisées dans la même grille."),
+          h3("Stratégies pour résoudre un Takuzu"),
+          p("Éviter les triplets : si deux 0 ou deux 1 sont consécutifs, la cellule suivante doit contenir l'autre chiffre."),
+          p("Équilibrer les 0 et les 1 : une ligne ou une colonne ne peut pas contenir plus de la moitié de ses cellules avec le même chiffre."),
+          p("Comparer les lignes et les colonnes complétées : si une ligne ou une colonne est presque remplie et qu'une autre est similaire, ajustez les chiffres pour éviter les doublons."),
+          actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
   })
   
-  # Afficher les records (simulés ici comme un tableau vide)
-  output$record_table <- renderDT({
-    datatable(data.frame(
-      Joueur = character(),
-      Niveau = character(),
-      Temps = character()
-    ))
+  observeEvent(input$records, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      tagList(
+        h2("Records de Takuzu")
+        # A REMPLIR
+      )
+    })
+  })
+  
+  observeEvent(input$back, {
+    output$content <- renderUI({
+      tagList(
+        div(id = "buttons", class = "button-container",
+            h1(class = "title", "Takuzu Game"),
+            actionButton("play", "Jouer", class = "btn-custom"),
+            br(),
+            actionButton("rules", "Règles", class = "btn-custom"),
+            br(),
+            actionButton("records", "Records", class = "btn-custom")
+        )
+      )
+    })
   })
 }
 
 # Lancer l'application
 shinyApp(ui, server)
-
