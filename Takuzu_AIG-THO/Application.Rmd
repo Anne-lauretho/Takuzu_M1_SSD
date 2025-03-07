@@ -360,6 +360,10 @@ library(DT)
 library(shinycssloaders)
 library(shinyjs)
 
+```
+
+```{r}
+
 # Fonction pour générer une grille de Takuzu
 generate_takuzu_grid <- function(size) {
   # Crée une grille vide
@@ -683,8 +687,9 @@ shinyApp(ui, server)
 
 ```
 
-```{r}
+Nouveau code en essayant de mettre des 1 et 0 dans la grille.
 
+```{r}
 # Télécharger les packages
 
 library(shiny)
@@ -692,7 +697,9 @@ library(shinydashboard)
 library(DT)
 library(shinycssloaders)
 library(shinyjs)
+```
 
+```{r}
 # Fonction pour générer une grille de Takuzu
 generate_takuzu_grid <- function(size) {
   # Crée une grille vide
@@ -1030,11 +1037,327 @@ server <- function(input, output, session) {
 
 # Lancer l'application
 shinyApp(ui, server)
+```
 
+Nouvelle version : avec amélioration de la grille pour que la grille ne soit plus crée aléatoirement sans vérifier les règles de Takuzu. Et ajouter des vérifications pour respecter les règles du jeu.
+De plus ajouter un message d'erreur et sauvergarder les records (il faudrait crée une base de données).
+
+
+```{r}
+install.packages("Rcpp")
+library(Rcpp)
+```
+
+Voir si la fonction en C++ fonctionne si on l'apelle.
+
+```{r}
+sourceCpp("\\\\wsl.localhost\\Ubuntu\\home\\anne-laure\\Takuzu_M1_SSD\\Takuzu_AIG-THO\\generate_takuzu_grid.cpp")
+grid <- generate_takuzu_grid(6)
+print(grid)
+```
+Je vais maintenant adapter cela à mon code R.
+
+```{r}
+library(shiny)
+library(shinyjs)
 ```
 
 
+```{r}
+# Sourcer le fichier C++ (sans la parenthèse fermante)
+sourceCpp("\\\\wsl.localhost\\Ubuntu\\home\\anne-laure\\Takuzu_M1_SSD\\Takuzu_AIG-THO\\generate_takuzu_grid.cpp")
 
+# UI - Interface utilisateur
+ui <- fluidPage(
+  useShinyjs(), extendShinyjs(text = "
+  shinyjs.toggleCell = function(id) {
+    var cell = document.getElementById(id);
+    if (cell) {
+      if (cell.innerHTML === '') {
+        cell.innerHTML = '0';
+      } else if (cell.innerHTML === '0') {
+        cell.innerHTML = '1';
+      } else {
+        cell.innerHTML = '';
+      }
+    }
+  }
+", functions = "toggleCell"),
+  tags$head(
+    tags$style(HTML("
+      body {
+        background-color: #D8BFD8;
+        color: white;
+        text-align: center;
+        overflow: hidden;
+      }
+      
+      .title {
+        font-size: 50px;
+        font-weight: bold;
+        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-custom {
+        background: linear-gradient(to bottom, #FFD700, #FFA500);
+        border: 3px solid #B87333;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        width: 220px;
+        height: 60px;
+        margin: 15px;
+        border-radius: 15px;
+        box-shadow: 4px 4px 6px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 10; 
+      }
+
+      .btn-custom:hover {
+        background: linear-gradient(to bottom, #FFEE88, #FFBB33);
+      }
+
+      .cloud-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0; 
+      }
+
+      .cloud {
+        position: absolute;
+        background: white;
+        width: 120px;
+        height: 70px;
+        border-radius: 50%;
+        box-shadow: 30px 10px 0 10px white, -30px 10px 0 10px white;
+        opacity: 0.7;
+        animation: float 12s linear infinite alternate;
+        z-index: 0; 
+      }
+
+      .cloud:nth-child(1) { top: 5%; left: 10%; animation-duration: 14s; }
+      .cloud:nth-child(2) { top: 20%; left: 50%; animation-duration: 12s; }
+      .cloud:nth-child(3) { top: 35%; left: 80%; animation-duration: 16s; }
+      .cloud:nth-child(4) { top: 50%; left: 20%; animation-duration: 18s; }
+      .cloud:nth-child(5) { top: 65%; left: 60%; animation-duration: 15s; }
+      .cloud:nth-child(6) { top: 80%; left: 30%; animation-duration: 17s; }
+      .cloud:nth-child(7) { top: 90%; left: 70%; animation-duration: 13s; }
+
+      @keyframes float {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(40px); }
+      }
+
+      .button-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+
+      .rules-container {
+        background-color: rgba(255, 255, 255, 0.8);
+        color: black;
+        border: 3px solid #B87333;
+        padding: 20px;
+        margin: 50px auto;
+        width: 70%;
+        box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        position: relative;
+        z-index: 20;
+      }
+
+      .description {
+        color: black;
+      }
+
+      .takuzu-grid {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);  
+        gap: 5px;
+        margin: 20px auto;
+        max-width: 600px;
+        width: 100%;
+      }
+      
+      .takuzu-grid-8 {
+        grid-template-columns: repeat(8, 1fr);
+      }
+      
+      .takuzu-grid-10 {
+        grid-template-columns: repeat(10, 1fr);
+      }
+      
+      .takuzu-cell {
+        width: 50px;
+        height: 50px;
+        background-color: #f0f0f0;
+        border: 2px solid #B87333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      
+      .takuzu-cell:hover {
+        background-color: #FFD700;
+      }
+      
+      .takuzu-cell-editable {
+        background-color: white;
+      }
+    "))
+  ),
+  
+  div(class = "cloud-container",
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud")
+  ),
+  
+  div(id = "buttons", class = "button-container",
+      h1(class = "title", "Takuzu Game"),
+      actionButton("play", "Jouer", class = "btn-custom"),
+      br(),
+      actionButton("rules", "Règles", class = "btn-custom"),
+      br(),
+      actionButton("records", "Records", class = "btn-custom")
+  ),
+  
+  uiOutput("content")
+)
+
+# Serveur
+server <- function(input, output, session) {
+  # Variable réactive pour stocker la grille de jeu
+  game_grid <- reactiveVal(NULL)
+  
+  observeEvent(input$play, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      tagList(
+        h2("Niveaux"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p(class = "description", "Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Gestionnaire d'événements pour les niveaux
+  observeEvent(input$easy, {
+    removeUI(selector = "#content")
+    grid <- generate_takuzu_grid(6)
+    game_grid(grid)
+    
+    output$content <- renderUI({
+      div(
+        h2("Takuzu - Niveau Facile (6x6)"),
+        div(class = "takuzu-grid",
+            lapply(1:nrow(grid), function(i) {
+              lapply(1:ncol(grid), function(j) {
+                cell_id <- paste0("cell-", i, "-", j)
+                div(
+                  class = paste0("takuzu-cell", 
+                                 if (is.na(grid[i, j])) " takuzu-cell-editable" else ""),
+                  id = cell_id,
+                  `onclick` = sprintf("shinyjs.toggleCell('%s')", cell_id),
+                  if (is.na(grid[i, j])) "" else grid[i, j]
+                )
+              })
+            })
+        ),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  observeEvent(input$medium, {
+    removeUI(selector = "#content")
+    grid <- generate_takuzu_grid(8)
+    game_grid(grid)
+    
+    output$content <- renderUI({
+      div(
+        h2("Takuzu - Niveau Moyen (8x8)"),
+        div(class = "takuzu-grid takuzu-grid-8",
+            lapply(1:nrow(grid), function(i) {
+              lapply(1:ncol(grid), function(j) {
+                cell_id <- paste0("cell-", i, "-", j)
+                div(
+                  class = paste0("takuzu-cell", 
+                                 if (is.na(grid[i, j])) " takuzu-cell-editable" else ""),
+                  id = cell_id,
+                  `onclick` = sprintf("shinyjs.toggleCell('%s')", cell_id),
+                  if (is.na(grid[i, j])) "" else grid[i, j]
+                )
+              })
+            })
+        ),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  observeEvent(input$hard, {
+    removeUI(selector = "#content")
+    grid <- generate_takuzu_grid(10)
+    game_grid(grid)
+    
+    output$content <- renderUI({
+      div(
+        h2("Takuzu - Niveau Difficile (10x10)"),
+        div(class = "takuzu-grid takuzu-grid-10",
+            lapply(1:nrow(grid), function(i) {
+              lapply(1:ncol(grid), function(j) {
+                cell_id <- paste0("cell-", i, "-", j)
+                div(
+                  class = paste0("takuzu-cell", 
+                                 if (is.na(grid[i, j])) " takuzu-cell-editable" else ""),
+                  id = cell_id,
+                  `onclick` = sprintf("shinyjs.toggleCell('%s')", cell_id),
+                  if (is.na(grid[i, j])) "" else grid[i, j]
+                )
+              })
+            })
+        ),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  observeEvent(input$back, {
+    removeUI(selector = "#content")
+    output$content <- renderUI({
+      div(id = "buttons", class = "button-container",
+          h1(class = "title", "Takuzu Game"),
+          actionButton("play", "Jouer", class = "btn-custom"),
+          br(),
+          actionButton("rules", "Règles", class = "btn-custom"),
+          br(),
+          actionButton("records", "Records", class = "btn-custom")
+      )
+    })
+  })
+}
+
+shinyApp(ui, server)
+
+```
 
 
 
