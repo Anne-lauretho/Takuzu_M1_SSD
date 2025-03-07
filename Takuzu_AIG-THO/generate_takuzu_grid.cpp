@@ -18,3 +18,4 @@ IntegerMatrix generate_takuzu_grid(int size) {
   return grid;
 }
 
+

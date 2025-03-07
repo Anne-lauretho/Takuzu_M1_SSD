@@ -1044,7 +1044,7 @@ De plus ajouter un message d'erreur et sauvergarder les records (il faudrait cr√
 
 
 ```{r}
-install.packages("Rcpp")
+#install.packages("Rcpp")
 library(Rcpp)
 ```
 
@@ -1055,6 +1055,16 @@ sourceCpp("\\\\wsl.localhost\\Ubuntu\\home\\anne-laure\\Takuzu_M1_SSD\\Takuzu_AI
 grid <- generate_takuzu_grid(6)
 print(grid)
 ```
+```{r}
+print(generate_takuzu_grid(6))
+```
+```{r}
+print(generate_takuzu_grid(8))
+```
+```{r}
+print(generate_takuzu_grid(10))
+```
+
 Je vais maintenant adapter cela √† mon code R.
 
 ```{r}
@@ -1356,8 +1366,12 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui, server)
-
 ```
 
+
+
+```{r}
+
+```
 
 
