@@ -20,22 +20,22 @@ generate_takuzu_grid <- function(n = 6, difficulty = 0.5) {
     grid <- matrix(rep("", n * n), nrow = n)
     
     check_valid <- function(grid, row, col, value) {
-    grid[row, col] <- value
+      grid[row, col] <- value
 
-  if (sum(grid[row, ] == "0") > n / 2 || sum(grid[row, ] == "1") > n / 2) return(FALSE)
-  if (sum(grid[, col] == "0") > n / 2 || sum(grid[, col] == "1") > n / 2) return(FALSE)
+      if (sum(grid[row, ] == "0") > n / 2 || sum(grid[row, ] == "1") > n / 2) return(FALSE)
+      if (sum(grid[, col] == "0") > n / 2 || sum(grid[, col] == "1") > n / 2) return(FALSE)
 
-  row_seq <- rle(grid[row, ])
-  col_seq <- rle(grid[, col])
+      row_seq <- rle(grid[row, ])
+      col_seq <- rle(grid[, col])
 
-  if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
-      any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
+      if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+          any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
 
-  if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
-      any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
+      if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+          any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
 
-  return(TRUE)
-}
+      return(TRUE)
+    }
 
     backtrack <- function(grid, row = 1, col = 1) {
       if (row > n) return(grid)
@@ -182,29 +182,30 @@ ui <- fluidPage(
 
 # Serveur
 server <- function(input, output, session) {
-  game_data <- reactiveVal()  # Stocke les données de la grille
+  game_data <- reactiveVal()
   
+  # Lorsqu'on clique sur "Jouer"
   observeEvent(input$play, {
     removeUI(selector = "#buttons")
     output$content <- renderUI({
       tagList(
         h2("Niveaux"),
         actionButton("easy", "Facile", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 6x6"),
+        p("Ce niveau comprend une grille 6x6"),
         br(),
         actionButton("medium", "Moyen", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 8x8"),
+        p("Ce niveau comprend une grille 8x8"),
         br(),
         actionButton("hard", "Difficile", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 10x10"),
+        p("Ce niveau comprend une grille 10x10"),
         br(),
         actionButton("back", "Retour", class = "btn-custom")
       )
     })
   })
   
+  # Lorsque le niveau "Facile" est choisi
   observeEvent(input$easy, {
-    # Génère une grille 6x6
     data <- generate_takuzu_grid(6, 0.5)
     game_data(data)
     
@@ -213,21 +214,20 @@ server <- function(input, output, session) {
       initial_filled <- game_data()$initial_filled
       
       tagList(
-        tags$div(
-          style = "display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; width: 300px; margin: auto;",
-          lapply(1:6, function(row) {
-            lapply(1:6, function(col) {
-              btn_id <- paste0("btn_", row, "_", col)
-              current_value <- values[row, col]
-              is_fixed <- initial_filled[row, col]
-              button_style <- if (is_fixed) {
-                "background-color: #add8e6; width: 100%; aspect-ratio: 1 / 1; font-size: 16px;"
-              } else {
-                "width: 100%; aspect-ratio: 1 / 1; font-size: 16px;"
-              }
-              actionButton(inputId = btn_id, label = current_value, style = button_style)
+        div(class = "grid-container",
+            lapply(1:6, function(row) {
+              lapply(1:6, function(col) {
+                btn_id <- paste0("btn_", row, "_", col)
+                current_value <- values[row, col]
+                is_fixed <- initial_filled[row, col]
+                button_style <- if (is_fixed) {
+                  "background-color: #add8e6;"
+                } else {
+                  "background-color: #FFFFFF;"
+                }
+                actionButton(inputId = btn_id, label = current_value, style = button_style)
+              })
             })
-          })
         ),
         br(),
         actionButton("back_to_play", "Retour", class = "btn-custom")
@@ -235,6 +235,21 @@ server <- function(input, output, session) {
     })
   })
   
+  
+  observeEvent(input$back, {
+    output$content <- renderUI({
+      div(id = "buttons", class = "button-container",
+          h1(class = "title", "Takuzu Game"),
+          actionButton("play", "Jouer", class = "btn-custom"),
+          br(),
+          actionButton("rules", "Règles", class = "btn-custom"),
+          br(),
+          actionButton("records", "Records", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Affichage des règles du jeu
   observeEvent(input$rules, {
     removeUI(selector = "#buttons")
     output$content <- renderUI({
@@ -253,43 +268,34 @@ server <- function(input, output, session) {
     })
   })
   
+  # Gestion des "Records"
   observeEvent(input$records, {
     removeUI(selector = "#buttons")
     output$content <- renderUI({
       tagList(
-        h2("Records de Takuzu")
-        # A REMPLIR
-      )
-    })
-  })
-  
-  observeEvent(input$back_to_play, {
-    output$content <- renderUI({
-      tagList(
-        h2("Niveaux"),
-        actionButton("easy", "Facile", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 6x6"),
-        br(),
-        actionButton("medium", "Moyen", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 8x8"),
-        br(),
-        actionButton("hard", "Difficile", class = "btn-custom"),
-        p(class = "description", "Ce niveau comprend une grille 10x10"),
+        h2("Records de Takuzu"),
+        p("Les meilleurs scores seront affichés ici."),
         br(),
         actionButton("back", "Retour", class = "btn-custom")
       )
     })
   })
   
-  observeEvent(input$back, {
+  # Retour à la page d'accueil des niveaux
+  observeEvent(input$back_to_play, {
     output$content <- renderUI({
-      div(id = "buttons", class = "button-container",
-          h1(class = "title", "Takuzu Game"),
-          actionButton("play", "Jouer", class = "btn-custom"),
-          br(),
-          actionButton("rules", "Règles", class = "btn-custom"),
-          br(),
-          actionButton("records", "Records", class = "btn-custom")
+      tagList(
+        h2("Niveaux"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p("Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back", "Retour", class = "btn-custom")
       )
     })
   })
@@ -298,8 +304,6 @@ server <- function(input, output, session) {
 # Lancer l'application
 shinyApp(ui, server)
 ```
-
-Le code me met bien l'interface de base, cependant il m'affiche que la grille et pas le reste.
 
 Par la suite voici un code pour généré une grille 6x6 avec boouton vérfier la grille, puis donner la solution.
 
@@ -458,3 +462,300 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+```{r}
+library(shiny)
+library(shinydashboard)
+library(DT)
+library(shinycssloaders)
+library(shinyjs)
+
+# Fonction de génération de grille Takuzu
+generate_takuzu_grid <- function(n = 6, difficulty = 0.5) {
+  full_grid <- function() {
+    grid <- matrix(rep("", n * n), nrow = n)
+    
+    check_valid <- function(grid, row, col, value) {
+      grid[row, col] <- value
+      
+      if (sum(grid[row, ] == "0") > n / 2 || sum(grid[row, ] == "1") > n / 2) return(FALSE)
+      if (sum(grid[, col] == "0") > n / 2 || sum(grid[, col] == "1") > n / 2) return(FALSE)
+      
+      row_seq <- rle(grid[row, ])
+      col_seq <- rle(grid[, col])
+      
+      if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+          any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
+      
+      if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+          any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
+      
+      return(TRUE)
+    }
+    
+    backtrack <- function(grid, row = 1, col = 1) {
+      if (row > n) return(grid)
+      if (col > n) return(backtrack(grid, row + 1, 1))
+      
+      for (value in c("0", "1")) {
+        if (check_valid(grid, row, col, value)) {
+          grid[row, col] <- value
+          result <- backtrack(grid, row, col + 1)
+          if (!is.null(result)) return(result)
+          grid[row, col] <- ""
+        }
+      }
+      return(NULL)
+    }
+    
+    return(backtrack(grid))
+  }
+  
+  complete_grid <- full_grid()
+  
+  puzzle_grid <- complete_grid
+  cells_to_remove <- round(n * n * difficulty)
+  remove_indices <- sample(1:(n * n), cells_to_remove)
+  puzzle_grid[remove_indices] <- ""
+  
+  initial_filled <- puzzle_grid != ""
+  
+  return(list(
+    grid = puzzle_grid,
+    solution = complete_grid,
+    initial_filled = initial_filled
+  ))
+}
+
+# UI - Interface utilisateur
+ui <- fluidPage(
+  useShinyjs(),  # Utiliser shinyjs pour pouvoir cacher les éléments
+  tags$head(
+    tags$style(HTML("
+      body {
+        background-color: #D8BFD8;
+        color: white;
+        text-align: center;
+        overflow: hidden;
+        position: relative;
+      }
+      
+      .title {
+        font-size: 50px;
+        font-weight: bold;
+        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-custom {
+        background: linear-gradient(to bottom, #FFD700, #FFA500);
+        border: 3px solid #B87333;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        width: 220px;
+        height: 60px;
+        margin: 15px;
+        border-radius: 15px;
+        box-shadow: 4px 4px 6px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 10; /* Les boutons restent au premier plan */
+      }
+
+      .btn-custom:hover {
+        background: linear-gradient(to bottom, #FFEE88, #FFBB33);
+      }
+
+      .grid-container {
+        display: grid;
+        grid-template-columns: repeat(6, 50px);
+        grid-template-rows: repeat(6, 50px);
+        gap: 5px;
+        justify-content: center;
+        margin-top: 20px;
+        z-index: 1; /* Assurer que la grille est devant l'arrière-plan */
+      }
+
+      .grid-btn {
+        width: 50px;
+        height: 50px;
+        font-size: 20px;
+        text-align: center;
+        background-color: #FFFFFF;
+        border: 2px solid #B87333;
+        border-radius: 5px;
+        box-shadow: 2px 2px 3px rgba(0,0,0,0.3);
+      }
+
+      .grid-btn-fixed {
+        background-color: #add8e6;
+      }
+
+      /* Nuages en arrière-plan fixes */
+      .cloud-background {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: url('https://www.transparenttextures.com/patterns/coffee.png');
+        background-attachment: fixed;
+        background-size: cover;
+        z-index: -1;
+        opacity: 0.7;
+        pointer-events: none;
+      }
+
+      .rules-container, .records-container {
+        border: 3px solid #B87333;
+        border-radius: 10px;
+        padding: 20px;
+        background-color: rgba(255, 255, 255, 0.8);
+        color: #333;
+        box-shadow: 4px 4px 8px rgba(0, 0, 0, 0.3);
+        margin: 20px;
+        z-index: 1;
+      }
+
+      .button-container {
+        z-index: 10;
+      }
+    "))
+  ),
+  
+  # Ajout des nuages fixes en arrière-plan
+  div(class = "cloud-background"),
+  
+  div(id = "buttons", class = "button-container",
+      h1(class = "title", "Takuzu Game"),
+      actionButton("play", "Jouer", class = "btn-custom"),
+      br(),
+      actionButton("rules", "Règles", class = "btn-custom"),
+      br(),
+      actionButton("records", "Records", class = "btn-custom")
+  ),
+  
+  uiOutput("content")
+)
+
+# Serveur
+server <- function(input, output, session) {
+  game_data <- reactiveVal()
+  
+  # Lorsqu'on clique sur "Jouer"
+  observeEvent(input$play, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      tagList(
+        h2("Niveaux"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p("Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Lorsque le niveau "Facile" est choisi
+  observeEvent(input$easy, {
+    data <- generate_takuzu_grid(6, 0.5)
+    game_data(data)
+    
+    output$content <- renderUI({
+      values <- game_data()$grid
+      initial_filled <- game_data()$initial_filled
+      
+      tagList(
+        div(class = "grid-container",
+            lapply(1:6, function(row) {
+              lapply(1:6, function(col) {
+                btn_id <- paste0("btn_", row, "_", col)
+                current_value <- values[row, col]
+                is_fixed <- initial_filled[row, col]
+                button_class <- if (is_fixed) {
+                  "grid-btn grid-btn-fixed"
+                } else {
+                  "grid-btn"
+                }
+                actionButton(inputId = btn_id, label = current_value, class = button_class)
+              })
+            })
+        ),
+        br(),
+        actionButton("back_to_play", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  observeEvent(input$back, {
+    output$content <- renderUI({
+      div(id = "buttons", class = "button-container",
+          h1(class = "title", "Takuzu Game"),
+          actionButton("play", "Jouer", class = "btn-custom"),
+          br(),
+          actionButton("rules", "Règles", class = "btn-custom"),
+          br(),
+          actionButton("records", "Records", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Affichage des règles du jeu
+  observeEvent(input$rules, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      div(class = "rules-container",
+          h2("Règles du jeu"),
+          p("Chaque cellule de la grille doit être remplie soit par un 0, soit par un 1."),
+          p("Chaque ligne et chaque colonne doivent contenir un nombre égal de 0 et de 1."),
+          p("Il est interdit d'avoir trois 0 consécutifs ou trois 1 consécutifs dans une ligne ou une colonne."),
+          p("Deux lignes ou deux colonnes identiques ne sont pas autorisées dans la même grille."),
+          h3("Stratégies pour résoudre un Takuzu"),
+          p("Éviter les triplets : si deux 0 ou deux 1 sont consécutifs, la cellule suivante doit contenir l'autre chiffre."),
+          p("Équilibrer les 0 et les 1 : une ligne ou une colonne ne peut pas contenir plus de la moitié de ses cellules avec le même chiffre."),
+          p("Comparer les lignes et les colonnes complétées : si une ligne ou une colonne est presque remplie et qu'une autre est similaire, ajustez les chiffres pour éviter les doublons."),
+          actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Gestion des "Records"
+  observeEvent(input$records, {
+    removeUI(selector = "#buttons")
+    output$content <- renderUI({
+      div(class = "records-container",
+          h2("Records de Takuzu"),
+          p("Les meilleurs scores seront affichés ici."),
+          br(),
+          actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Retour à la page d'accueil des niveaux
+  observeEvent(input$back_to_play, {
+    output$content <- renderUI({
+      tagList(
+        h2("Niveaux"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p("Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p("Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back", "Retour", class = "btn-custom")
+      )
+    })
+  })
+}
+
+# Lancer l'application
+shinyApp(ui, server)
+```
