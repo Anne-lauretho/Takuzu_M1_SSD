@@ -462,12 +462,34 @@ server <- function(input, output, session) {
 shinyApp(ui, server)
 ```
 
+J'ai ensuite essayer de rendre les boutons intéractifs afin de mettre des 0 et 1 dans la grille de $6x6$.
+
 ```{r}
 library(shiny)
 library(shinydashboard)
 library(DT)
 library(shinycssloaders)
 library(shinyjs)
+
+# Fonction d'aide pour valider le coup (accessible globalement)
+check_valid_move <- function(grid, row, col, value, n = 6) {
+  temp_grid <- grid
+  temp_grid[row, col] <- value
+  
+  if (sum(temp_grid[row, ] == "0") > n / 2 || sum(temp_grid[row, ] == "1") > n / 2) return(FALSE)
+  if (sum(temp_grid[, col] == "0") > n / 2 || sum(temp_grid[, col] == "1") > n / 2) return(FALSE)
+  
+  row_seq <- rle(temp_grid[row, ])
+  col_seq <- rle(temp_grid[, col])
+  
+  if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+      any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
+  
+  if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+      any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
+  
+  return(TRUE)
+}
 
 # Fonction de génération de grille Takuzu
 generate_takuzu_grid <- function(n = 6, difficulty = 0.5) {
@@ -528,7 +550,7 @@ generate_takuzu_grid <- function(n = 6, difficulty = 0.5) {
 
 # UI - Interface utilisateur
 ui <- fluidPage(
-  useShinyjs(),  # Utiliser shinyjs pour pouvoir cacher les éléments
+  useShinyjs(),  # Pour utiliser shinyjs (cacher/montrer des éléments)
   tags$head(
     tags$style(HTML("
       body {
@@ -557,7 +579,7 @@ ui <- fluidPage(
         border-radius: 15px;
         box-shadow: 4px 4px 6px rgba(0,0,0,0.3);
         position: relative;
-        z-index: 10; /* Les boutons restent au premier plan */
+        z-index: 10;
       }
 
       .btn-custom:hover {
@@ -571,7 +593,7 @@ ui <- fluidPage(
         gap: 5px;
         justify-content: center;
         margin-top: 20px;
-        z-index: 1; /* Assurer que la grille est devant l'arrière-plan */
+        z-index: 1;
       }
 
       .grid-btn {
@@ -589,7 +611,6 @@ ui <- fluidPage(
         background-color: #add8e6;
       }
 
-      /* Nuages en arrière-plan fixes */
       .cloud-background {
         position: fixed;
         top: 0;
@@ -621,7 +642,7 @@ ui <- fluidPage(
     "))
   ),
   
-  # Ajout des nuages fixes en arrière-plan
+  # Nuages fixes en arrière-plan
   div(class = "cloud-background"),
   
   div(id = "buttons", class = "button-container",
@@ -639,6 +660,9 @@ ui <- fluidPage(
 # Serveur
 server <- function(input, output, session) {
   game_data <- reactiveVal()
+  
+  # Variable pour mémoriser la cellule sélectionnée par l'utilisateur
+  selected_cell <- reactiveValues(row = NULL, col = NULL)
   
   # Lorsqu'on clique sur "Jouer"
   observeEvent(input$play, {
@@ -686,11 +710,18 @@ server <- function(input, output, session) {
             })
         ),
         br(),
+        # Boutons pour insérer "0" ou "1"
+        div(style = "margin-top: 20px; text-align: center;",
+            actionButton("insert_0", "Insérer 0", class = "btn-custom"),
+            actionButton("insert_1", "Insérer 1", class = "btn-custom")
+        ),
+        br(),
         actionButton("back_to_play", "Retour", class = "btn-custom")
       )
     })
   })
   
+  # Retour à l'écran initial (page d'accueil)
   observeEvent(input$back, {
     output$content <- renderUI({
       div(id = "buttons", class = "button-container",
@@ -704,6 +735,55 @@ server <- function(input, output, session) {
     })
   })
   
+    # Observer pour gérer la sélection d'une case de la grille
+    observe({
+      for (row in 1:6) {
+        for (col in 1:6) {
+          btn_id <- paste0("btn_", row, "_", col)
+          observeEvent(input[[btn_id]], {
+            if (!game_data()$initial_filled[row, col]) {
+              selected_cell$row <- row
+              selected_cell$col <- col
+        }
+      }, ignoreInit = TRUE)
+    }
+  }
+})
+
+    # Gestion du bouton "Insérer 0"
+    observeEvent(input$insert_0, {
+      if (!is.null(selected_cell$row) && !is.null(selected_cell$col)) {
+        row <- selected_cell$row
+        col <- selected_cell$col
+        # Vérifie que la case n'est pas fixe
+        if (!game_data()$initial_filled[row, col]) {
+          # Insère "0" dans la case sélectionnée si le coup est valide
+          if (check_valid_move(game_data()$grid, row, col, "0")) {
+          game_data()$grid[row, col] <- "0"
+          btn_id <- paste0("btn_", row, "_", col)
+          updateActionButton(session, btn_id, label = "0")
+      }
+    }
+  }
+})
+
+# Gestion du bouton "Insérer 1"
+observeEvent(input$insert_1, {
+  if (!is.null(selected_cell$row) && !is.null(selected_cell$col)) {
+    row <- selected_cell$row
+    col <- selected_cell$col
+    # Vérifie que la case n'est pas fixe
+    if (!game_data()$initial_filled[row, col]) {
+      # Insère "1" dans la case sélectionnée si le coup est valide
+      if (check_valid_move(game_data()$grid, row, col, "1")) {
+        game_data()$grid[row, col] <- "1"
+        btn_id <- paste0("btn_", row, "_", col)
+        updateActionButton(session, btn_id, label = "1")
+      }
+    }
+  }
+})
+
   # Affichage des règles du jeu
   observeEvent(input$rules, {
     removeUI(selector = "#buttons")
@@ -736,7 +816,7 @@ server <- function(input, output, session) {
     })
   })
   
-  # Retour à la page d'accueil des niveaux
+  # Retour à la page des niveaux depuis la grille
   observeEvent(input$back_to_play, {
     output$content <- renderUI({
       tagList(
