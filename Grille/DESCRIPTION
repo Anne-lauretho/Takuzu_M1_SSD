@@ -1,12 +1,15 @@
 Package: Grille
 Type: Package
-Title: What the Package Does (Title Case)
+Title: Takuzu Grid Generator
 Version: 0.1.0
-Author: Who wrote it
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Author: Emilie Aigoin
+Maintainer: Emilie Aigoin <ton.email@example.com>
+Description: Generate and solve Takuzu puzzles. 
+    This package creates a valid Takuzu grid puzzle with its solution. 
+    Takuzu is a binary puzzle where each row and column must contain 
+    an equal number of 0s and 1s, with no more than two identical 
+    numbers adjacent to each other, and no two rows or columns can be identical.
+License: MIT
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 7.3.2

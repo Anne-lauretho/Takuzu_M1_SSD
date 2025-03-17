@@ -1,0 +1,11 @@
+Package: Grille2
+Type: Package
+Title: Generation of a Takuzu grid
+Version: 0.1.0
+Author: AIGOIN Emilie 
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: More about what it does (maybe more than one line)
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
