@@ -1,0 +1,582 @@
+---
+title: "Application avec grille"
+author: "AIGOIN Emilie"
+date: "2025-03-17"
+output: html_document
+---
+
+```{r}
+
+library(shiny)
+library(shinydashboard)
+library(DT)
+library(shinycssloaders)
+library(shinyjs)
+library(shinyWidgets)
+
+# Fonction de génération de grille Takuzu améliorée
+generate_takuzu_grid <- function(n = 6, difficulty = 0.5) {
+  # Générer une grille complète valide
+  full_grid <- function() {
+    grid <- matrix(rep("", n * n), nrow = n)
+    
+    check_valid <- function(grid, row, col, value) {
+      grid[row, col] <- value
+      
+      if (sum(grid[row, ] == "0") > n / 2 || sum(grid[row, ] == "1") > n / 2) return(FALSE)
+      if (sum(grid[, col] == "0") > n / 2 || sum(grid[, col] == "1") > n / 2) return(FALSE)
+      
+      row_seq <- rle(grid[row, ])
+      col_seq <- rle(grid[, col])
+      
+      if (any(row_seq$lengths[row_seq$values == "0"] >= 3) || 
+          any(row_seq$lengths[row_seq$values == "1"] >= 3)) return(FALSE)
+      
+      if (any(col_seq$lengths[col_seq$values == "0"] >= 3) || 
+          any(col_seq$lengths[col_seq$values == "1"] >= 3)) return(FALSE)
+      
+      return(TRUE)
+    }
+    
+    backtrack <- function(grid, row = 1, col = 1) {
+      if (row > n) return(grid)
+      
+      if (col > n) {
+        return(backtrack(grid, row + 1, 1))
+      }
+      
+      for (value in c("0", "1")) {
+        if (check_valid(grid, row, col, value)) {
+          grid[row, col] <- value
+          result <- backtrack(grid, row, col + 1)
+          if (!is.null(result)) return(result)
+          grid[row, col] <- ""
+        }
+      }
+      
+      return(NULL)
+    }
+    
+    return(backtrack(grid))
+  }
+  
+  # Générer une grille complète
+  complete_grid <- full_grid()
+  solution <- complete_grid  # Sauvegarder la solution complète
+  
+  # Créer la grille de puzzle en laissant certaines cellules vides
+  puzzle_grid <- complete_grid
+  
+  # Calculer le nombre de cellules à laisser vides
+  cells_to_remove <- round(n * n * difficulty)
+  
+  # Supprimer des cellules de manière aléatoire
+  remove_indices <- sample(1:(n*n), cells_to_remove)
+  puzzle_grid[remove_indices] <- ""
+  
+  # Créer une matrice booléenne pour les cellules initialement remplies
+  initial_filled <- puzzle_grid != ""
+  
+  return(list(
+    grid = puzzle_grid,
+    solution = solution,
+    initial_filled = initial_filled
+  ))
+}
+
+# UI - Interface utilisateur
+ui <- fluidPage(
+  useShinyjs(),  # Utiliser shinyjs pour pouvoir cacher les éléments
+  tags$head(
+    tags$style(HTML("
+      body {
+        background-color: #D8BFD8;
+        color: white;
+        text-align: center;
+        overflow: hidden;
+      }
+      
+      .title {
+        font-size: 50px;
+        font-weight: bold;
+        text-shadow: 3px 3px 5px rgba(0, 0, 0, 0.3);
+      }
+
+      .btn-custom {
+        background: linear-gradient(to bottom, #FFD700, #FFA500);
+        border: 3px solid #B87333;
+        color: white;
+        font-size: 22px;
+        font-weight: bold;
+        width: 220px;
+        height: 60px;
+        margin: 15px;
+        border-radius: 15px;
+        box-shadow: 4px 4px 6px rgba(0,0,0,0.3);
+        position: relative;
+        z-index: 10; /* Les boutons restent au premier plan */
+      }
+
+      .btn-custom:hover {
+        background: linear-gradient(to bottom, #FFEE88, #FFBB33);
+      }
+
+      .cloud-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        z-index: 0; /* Nuages en arrière-plan */
+      }
+
+      .cloud {
+        position: absolute;
+        background: white;
+        width: 120px;
+        height: 70px;
+        border-radius: 50%;
+        box-shadow: 30px 10px 0 10px white, -30px 10px 0 10px white;
+        opacity: 0.7;
+        animation: float 12s linear infinite alternate;
+        z-index: 0; /* S'assurer que les nuages sont en arrière-plan */
+      }
+
+      .cloud:nth-child(1) { top: 5%; left: 10%; animation-duration: 14s; }
+      .cloud:nth-child(2) { top: 20%; left: 50%; animation-duration: 12s; }
+      .cloud:nth-child(3) { top: 35%; left: 80%; animation-duration: 16s; }
+      .cloud:nth-child(4) { top: 50%; left: 20%; animation-duration: 18s; }
+      .cloud:nth-child(5) { top: 65%; left: 60%; animation-duration: 15s; }
+      .cloud:nth-child(6) { top: 80%; left: 30%; animation-duration: 17s; }
+      .cloud:nth-child(7) { top: 90%; left: 70%; animation-duration: 13s; }
+
+      @keyframes float {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(40px); }
+      }
+
+      .button-container {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+      }
+
+      .rules-container {
+        background-color: rgba(255, 255, 255, 0.8);
+        color: black;
+        border: 3px solid #B87333;
+        padding: 20px;
+        margin: 50px auto;
+        width: 70%;
+        box-shadow: 4px 4px 6px rgba(0, 0, 0, 0.3);
+        border-radius: 15px;
+        position: relative;
+        z-index: 20; /* Cadre en avant-plan */
+      }
+
+      .description {
+        color: black;
+      }
+
+      .takuzu-grid {
+        display: inline-grid;
+        grid-template-columns: repeat(var(--grid-size), minmax(50px, 1fr));
+        gap: 5px;
+        margin: 20px auto;
+        max-width: 600px;
+      }
+      
+      .takuzu-cell {
+        width: 50px;
+        height: 50px;
+        background-color: #f0f0f0;
+        border: 2px solid #B87333;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 24px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      
+      .takuzu-cell:hover {
+        background-color: #FFD700;
+      }
+      
+      .takuzu-cell-editable {
+        background-color: white;
+      }
+      
+      .takuzu-cell-fixed {
+        background-color: #e0e0e0;
+      }
+      
+      .color-picker-container {
+        background-color: rgba(255, 255, 255, 0.8);
+        padding: 10px;
+        border-radius: 10px;
+        border: 2px solid #B87333;
+        display: inline-block;
+        margin: 10px auto;
+      }
+      
+      .control-panel {
+        background-color: rgba(255, 255, 255, 0.8);
+        color: black;
+        border: 3px solid #B87333;
+        padding: 15px;
+        margin: 20px auto;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 15px;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      
+      .control-btn {
+        background: linear-gradient(to bottom, #FFD700, #FFA500);
+        border: 2px solid #B87333;
+        color: white;
+        font-size: 16px;
+        font-weight: bold;
+        padding: 8px 15px;
+        border-radius: 10px;
+        margin: 5px;
+      }
+      
+      .difficulty-slider {
+        width: 200px;
+        margin: 10px;
+      }
+    "))
+  ),
+  
+  div(class = "cloud-container",
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud"), div(class = "cloud"), div(class = "cloud"),
+      div(class = "cloud")
+  ),
+  
+  div(id = "main-menu", class = "button-container",
+      h1(class = "title", "Takuzu Game"),
+      actionButton("play", "Jouer", class = "btn-custom"),
+      br(),
+      actionButton("rules", "Règles", class = "btn-custom"),
+      br(),
+      actionButton("records", "Records", class = "btn-custom")
+  ),
+  
+  # Contenu dynamique
+  uiOutput("content")
+)
+
+# Serveur
+server <- function(input, output, session) {
+  # Variables réactives
+  game_data <- reactiveVal(NULL)
+  cell_values <- reactiveVal(NULL)
+  current_grid_size <- reactiveVal(6)
+  current_difficulty <- reactiveVal(0.5)
+  
+  observeEvent(input$play, {
+    hide("main-menu")
+    output$content <- renderUI({
+      tagList(
+        h2("Niveaux", style = "color: white;"),
+        actionButton("easy", "Facile", class = "btn-custom"),
+        p(class = "description", style = "color: white;", "Ce niveau comprend une grille 6x6"),
+        br(),
+        actionButton("medium", "Moyen", class = "btn-custom"),
+        p(class = "description", style = "color: white;", "Ce niveau comprend une grille 8x8"),
+        br(),
+        actionButton("hard", "Difficile", class = "btn-custom"),
+        p(class = "description", style = "color: white;", "Ce niveau comprend une grille 10x10"),
+        br(),
+        actionButton("back_to_menu", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Fonction pour générer le UI de la grille
+  generate_grid_ui <- function(size, grid_data) {
+    values <- grid_data$grid
+    initial_filled <- grid_data$initial_filled
+    
+    tagList(
+      tags$div(
+        style = paste0("--grid-size: ", size, ";"),
+        class = "takuzu-grid",
+        lapply(1:size, function(row) {
+          lapply(1:size, function(col) {
+            cell_id <- paste0("cell_", row, "_", col)
+            is_fixed <- initial_filled[row, col]
+            current_value <- values[row, col]
+            
+            tags$div(
+              id = cell_id,
+              class = paste0("takuzu-cell", if(is_fixed) " takuzu-cell-fixed" else " takuzu-cell-editable"),
+              "data-row" = row,
+              "data-col" = col,
+              "data-fixed" = if(is_fixed) "true" else "false",
+              style = if(is_fixed) paste0("background-color: ", input$fixed_cell_color, ";") else "",
+              current_value
+            )
+          })
+        })
+      )
+    )
+  }
+  
+  # Gérer les niveaux
+  observeEvent(input$easy, {
+    current_grid_size(6)
+    current_difficulty(0.5)
+    start_game(6, 0.5)
+  })
+  
+  observeEvent(input$medium, {
+    current_grid_size(8)
+    current_difficulty(0.4)
+    start_game(8, 0.4)
+  })
+  
+  observeEvent(input$hard, {
+    current_grid_size(10)
+    current_difficulty(0.3)
+    start_game(10, 0.3)
+  })
+  
+  # Fonction pour démarrer le jeu
+  start_game <- function(size, difficulty) {
+    # Générer une nouvelle grille
+    new_data <- generate_takuzu_grid(size, difficulty)
+    game_data(new_data)
+    cell_values(new_data$grid)
+    
+    # Afficher l'UI du jeu
+    output$content <- renderUI({
+      tagList(
+        h2(paste0("Takuzu - ", if(size == 6) "Facile" else if(size == 8) "Moyen" else "Difficile", " (", size, "x", size, ")"), 
+            style = "color: white;"),
+        
+        # Sélecteur de couleur pour les cases fixes
+        div(class = "color-picker-container",
+            pickerInput(
+              inputId = "fixed_cell_color", 
+              label = "Couleur des cases initiales", 
+              choices = c("Gris clair" = "#e0e0e0", "Bleu" = "#add8e6", "Vert" = "#cdecc5", "Jaune" = "#fffacd", "Rose" = "#e7c5ec"), 
+              choicesOpt = list(
+                style = c(
+                  "background-color: #e0e0e0; color: black;", 
+                  "background-color: #add8e6; color: black;", 
+                  "background-color: #cdecc5; color: black;", 
+                  "background-color: #fffacd; color: black;",
+                  "background-color: #e7c5ec; color: black;"
+                )
+              ),
+              selected = "#e0e0e0"
+            )
+        ),
+        
+        # Grille de jeu
+        uiOutput("grid_area"),
+        
+        # Panneau de contrôle
+        div(class = "control-panel",
+            actionButton("check_btn", "Vérifier la grille", class = "control-btn"),
+            actionButton("new_game_btn", "Nouvelle partie", class = "control-btn"),
+            div(style = "display: flex; flex-direction: column; align-items: center;",
+                sliderInput("difficulty", "Difficulté", 
+                            min = 0.1, max = 0.8, value = difficulty, step = 0.1,
+                            width = "200px", class = "difficulty-slider")
+            ),
+            actionButton("back_to_menu", "Menu principal", class = "control-btn")
+        )
+      )
+    })
+    
+    # Rendre la grille de jeu
+    output$grid_area <- renderUI({
+      generate_grid_ui(size, game_data())
+    })
+    
+    # Ajouter les observateurs pour les cellules
+    observe({
+      data <- game_data()
+      if (is.null(data)) return()
+      
+      initial_filled <- data$initial_filled
+      size <- current_grid_size()
+      
+      for (row in 1:size) {
+        for (col in 1:size) {
+          local({
+            local_row <- row
+            local_col <- col
+            cell_id <- paste0("cell_", local_row, "_", local_col)
+            
+            # Ajouter un observateur pour chaque cellule
+            if (!initial_filled[local_row, local_col]) {
+              # Créer un observateur uniquement si la cellule n'est pas fixe
+              shinyjs::onclick(cell_id, {
+                values <- cell_values()
+                
+                # Changement cyclique: "" -> "0" -> "1" -> ""
+                current_value <- values[local_row, local_col]
+                new_value <- ifelse(current_value == "", "0",
+                                   ifelse(current_value == "0", "1", ""))
+                
+                values[local_row, local_col] <- new_value
+                cell_values(values)
+                
+                # Mettre à jour le contenu de la cellule
+                shinyjs::html(cell_id, new_value)
+              })
+            }
+          })
+        }
+      }
+    })
+  }
+  
+  # Vérifier la grille
+  observeEvent(input$check_btn, {
+    data <- game_data()
+    values <- cell_values()
+    
+    # Vérifier que toutes les cellules sont remplies
+    if (any(values == "")) {
+      showModal(modalDialog(
+        title = "Grille incomplète",
+        div(class = "modal-content",
+            h3(class = "modal-error", "Grille incomplète"),
+            p("Veuillez remplir toutes les cellules avant de vérifier."),
+            footer = tagList(
+              actionButton("modal_close", "Fermer", class = "btn-modal")
+            )
+        ),
+        easyClose = TRUE
+      ))
+      return()
+    }
+    
+    # Vérifier si la grille est valide selon les règles du Takuzu
+    correct <- all(values == data$solution)
+    
+    showModal(modalDialog(
+      title = if(correct) "Félicitations!" else "Erreur",
+      div(class = "modal-content",
+          if (correct) {
+            tagList(
+              h3(class = "modal-success", "Bravo !"),
+              p("Vous avez résolu le puzzle correctement."),
+              p("Voulez-vous commencer une nouvelle partie ?")
+            )
+          } else {
+            tagList(
+              h3(class = "modal-error", "Erreur"),
+              p("Il y a des erreurs dans votre solution. Continuez à essayer.")
+            )
+          },
+          footer = tagList(
+            if(correct) {
+              actionButton("new_game_from_modal", "Nouvelle partie", class = "btn-modal")
+            } else {
+              actionButton("modal_close", "Continuer", class = "btn-modal")
+            }
+          )
+      ),
+      easyClose = TRUE
+    ))
+  })
+  
+  # Créer une nouvelle partie depuis le modal
+  observeEvent(input$new_game_from_modal, {
+    size <- current_grid_size()
+    difficulty <- input$difficulty
+    removeModal()
+    start_game(size, difficulty)
+  })
+  
+  # Fermer le modal
+  observeEvent(input$modal_close, {
+    removeModal()
+  })
+  
+  # Créer une nouvelle partie
+  observeEvent(input$new_game_btn, {
+    size <- current_grid_size()
+    difficulty <- input$difficulty
+    start_game(size, difficulty)
+  })
+  
+  # Gérer le changement de couleur des cellules fixes
+  observeEvent(input$fixed_cell_color, {
+    data <- game_data()
+    if (is.null(data)) return()
+    
+    initial_filled <- data$initial_filled
+    size <- current_grid_size()
+    fixed_color <- input$fixed_cell_color
+    
+    for (row in 1:size) {
+      for (col in 1:size) {
+        if (initial_filled[row, col]) {
+          cell_id <- paste0("cell_", row, "_", col)
+          shinyjs::runjs(sprintf(
+            "$('#%s').css('background-color', '%s');",
+            cell_id, fixed_color
+          ))
+        }
+      }
+    }
+  })
+  
+  # Règles du jeu
+  observeEvent(input$rules, {
+    hide("main-menu")
+    output$content <- renderUI({
+      div(class = "rules-container",
+          h2("Règles du jeu"),
+          p("Chaque cellule de la grille doit être remplie soit par un 0, soit par un 1."),
+          p("Chaque ligne et chaque colonne doivent contenir un nombre égal de 0 et de 1."),
+          p("Il est interdit d'avoir trois 0 consécutifs ou trois 1 consécutifs dans une ligne ou une colonne."),
+          p("Deux lignes ou deux colonnes identiques ne sont pas autorisées dans la même grille."),
+          h3("Stratégies pour résoudre un Takuzu"),
+          p("Éviter les triplets : si deux 0 ou deux 1 sont consécutifs, la cellule suivante doit contenir l'autre chiffre."),
+          p("Équilibrer les 0 et les 1 : une ligne ou une colonne ne peut pas contenir plus de la moitié de ses cellules avec le même chiffre."),
+          p("Comparer les lignes et les colonnes complétées : si une ligne ou une colonne est presque remplie et qu'une autre est similaire, ajustez les chiffres pour éviter les doublons."),
+          actionButton("back_to_menu", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Records
+  observeEvent(input$records, {
+    hide("main-menu")
+    output$content <- renderUI({
+      div(class = "rules-container",
+          h2("Records de Takuzu"),
+          p("Fonctionnalité à venir dans une future mise à jour."),
+          actionButton("back_to_menu", "Retour", class = "btn-custom")
+      )
+    })
+  })
+  
+  # Retour au menu principal
+  observeEvent(input$back_to_menu, {
+    show("main-menu")
+    output$content <- renderUI({
+      NULL
+    })
+  })
+}
+
+# Lancer l'application
+shinyApp(ui, server)
+
+```
+
