@@ -15,7 +15,8 @@ ui <- fluidPage(
         background-color: #D8BFD8;
         color: white;
         text-align: center;
-        overflow: hidden;
+        overflow-y: scroll; */ défilement vertical */
+        scroll-behavior: smooth; */ défilement fluide */
       }
 
       .title {
@@ -503,7 +504,6 @@ server <- function(input, output, session) {
     }
   })
 
-  # Vérification de la grille
   observeEvent(input$check_btn, {
 
     req(game_data())  # Vérifie que game_data() est non nul
@@ -513,10 +513,13 @@ server <- function(input, output, session) {
     data <- game_data()
     values <- cell_values()
 
+    print("Valeurs des cellules :")
     print(values)  # Pour déboguer et voir les valeurs des cellules
 
     # Vérifier que toutes les cellules sont remplies
     if (any(values == "")) {
+      print("Grille incomplète, affichage de la modal")
+
       showModal(modalDialog(
         title = "Grille incomplète",
         "Veuillez remplir toutes les cellules avant de vérifier.",
@@ -529,17 +532,19 @@ server <- function(input, output, session) {
     # Vérifier si la grille est valide selon les règles du Takuzu
     correct <- all(values == data$solution)
 
+    print("Solution correcte ?")
+    print(correct)
+
     if (correct) {
+      print("Solution correcte, ouverture de la modal félicitations")
       showModal(modalDialog(
         title = "Félicitations !",
-        div(
-          style = "text-align: center;",
-          tags$h3("Bravo ! Vous avez résolu le puzzle correctement.")
-        ),
+        div(style = "text-align: center;", tags$h3("Bravo ! Vous avez résolu le puzzle correctement.")),
         easyClose = TRUE,
         footer = modalButton("Continuer")
       ))
     } else {
+      print("Solution incorrecte, ouverture de la modal d'erreur")
       showModal(modalDialog(
         title = "Essayez encore",
         "Il y a des erreurs dans votre solution. Continuez à essayer !",
@@ -549,25 +554,8 @@ server <- function(input, output, session) {
     }
   })
 
-  # Nouvelle partie
-  observeEvent(input$new_game_btn, {
-    # Obtenir la taille et difficulté actuelles
-    size <- grid_size()
-    diff_level <- input$difficulty
-
-    # Générer une nouvelle grille avec la taille actuelle
-    new_data <- generate_takuzu_grid(size, diff_level)
-    game_data(new_data)
-    cell_values(new_data$grid)
-
-    # Afficher un message
-    showNotification(
-      "Nouvelle partie générée !",
-      type = "message",
-      duration = 3
-    )
-  })
 }
 
 # Lancer l'application
 shinyApp(ui, server)
+
