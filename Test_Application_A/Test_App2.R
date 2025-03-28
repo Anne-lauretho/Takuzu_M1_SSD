@@ -5,6 +5,7 @@ library(shinydashboard)
 library(shinyjs)
 library(shinyWidgets)
 library(Grille2)
+library(later)
 
 # UI
 ui <- fluidPage(
@@ -504,8 +505,17 @@ server <- function(input, output, session) {
     }
   })
 
-  observeEvent(input$check_btn, {
+  afficher_modal <- function(message) {
+    showModal(modalDialog(
+      title = "Message",
+      message,
+      easyClose = TRUE,
+      footer = modalButton("OK")
+    ))
+  }
 
+  observeEvent(input$check_btn, {
+    print("==> Vérification enclenchée")
     req(game_data())  # Vérifie que game_data() est non nul
     req(cell_values())  # Vérifie que les valeurs des cellules sont non vides
 
@@ -516,35 +526,27 @@ server <- function(input, output, session) {
     print("Valeurs des cellules :")
     print(values)  # Pour déboguer et voir les valeurs des cellules
 
+    print("Solution correcte :")
+    print(data$solution)
+
     # Vérifier que toutes les cellules sont remplies
     if (any(values == "")) {
       print("Grille incomplète, affichage de la modal")
 
-      showModal(modalDialog(
-        title = "Grille incomplète",
-        "Veuillez remplir toutes les cellules avant de vérifier.",
-        easyClose = TRUE,
-        footer = modalButton("OK")
-      ))
+      afficher_modal("Veuillez remplir toutes les cellules avant de vérifier.")
       return()
     }
 
     # Vérifier si la grille est valide selon les règles du Takuzu
-    correct <- all(values == data$solution)
-
-    print("Solution correcte ?")
-    print(correct)
+    correct <- identical(as.matrix(values), as.matrix(data$solution))
 
     if (correct) {
-      print("Solution correcte, ouverture de la modal félicitations")
-      showModal(modalDialog(
-        title = "Félicitations !",
-        div(style = "text-align: center;", tags$h3("Bravo ! Vous avez résolu le puzzle correctement.")),
-        easyClose = TRUE,
-        footer = modalButton("Continuer")
-      ))
+      print("Affichage de la modal de succès")
+      afficher_modal("Bravo ! Vous avez résolu le puzzle correctement.")
+
+
     } else {
-      print("Solution incorrecte, ouverture de la modal d'erreur")
+      print("Affichage de la modal d'erreur")
       showModal(modalDialog(
         title = "Essayez encore",
         "Il y a des erreurs dans votre solution. Continuez à essayer !",
@@ -558,4 +560,3 @@ server <- function(input, output, session) {
 
 # Lancer l'application
 shinyApp(ui, server)
-
