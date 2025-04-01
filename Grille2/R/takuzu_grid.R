@@ -60,16 +60,22 @@ generate_takuzu_grid <- function(n, difficulty) {
 
   # Générer une grille complète
   complete_grid <- full_grid()
-  solution <- complete_grid  # Sauvegarder la solution complète
+  #solution <- complete_grid  # Sauvegarder la solution complète
 
   # Créer la grille de puzzle en laissant certaines cellules vides
-  puzzle_grid <- complete_grid
+  #puzzle_grid <- complete_grid
+
+  # NEWW
+  solution <- matrix(complete_grid, nrow=n)  # Créer une copie indépendante
+  puzzle_grid <- matrix(complete_grid, nrow=n)  # Créer une autre copie indépendante
 
   # Calculer le nombre de cellules à laisser vides
   cells_to_remove <- round(n * n * difficulty)
+  cells_to_remove <- min(cells_to_remove, n * n)  # Sécurisation
 
   # Supprimer des cellules de manière aléatoire
   remove_indices <- sample(1:(n*n), cells_to_remove)
+
   puzzle_grid[remove_indices] <- ""
 
   # Créer une matrice booléenne pour les cellules initialement remplies

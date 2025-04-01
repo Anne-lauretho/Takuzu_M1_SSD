@@ -7,7 +7,6 @@ library(shinyWidgets)
 library(Grille2)
 
 # Problèmes du code :
-  # 1. les grilles 8x8 et 10x10 ne sont pas visibles entièrement (sont trop vers le bas et on ne peut pas scroller)
   # 2. Les messsages de "félicitation" ou de "désolé essayez encore quand on vérifie la grille ne s'affichent pas
 
 # UI
@@ -20,6 +19,8 @@ ui <- fluidPage(
         color: white;
         text-align: center;
         overflow: hidden;
+        overflow-y: scroll; */ défilement vertical */
+        scroll-behavior: smooth; */ défilement fluide */
       }
 
       .title {
@@ -514,11 +515,17 @@ server <- function(input, output, session) {
     data <- game_data()
     values <- cell_values()
 
+    # Débogage
+    print("Valeurs actuelles:")
+    print(values)
+    print("Solution attendue:")
+    print(data$solution)
+
     # Vérifier que toutes les cellules sont remplies
     if (any(values == "")) {
       showModal(modalDialog(
         title = "Grille incomplète",
-        "Veuillez remplir toutes les cellules avant de vérifier.",
+        HTML("<p style='color: black;'>Veuillez remplir toutes les cellules avant de vérifier.</p>"),
         easyClose = TRUE,
         footer = modalButton("OK")
       ))
@@ -531,17 +538,14 @@ server <- function(input, output, session) {
     if (correct) {
       showModal(modalDialog(
         title = "Félicitations !",
-        div(
-          style = "text-align: center;",
-          tags$h3("Bravo ! Vous avez résolu le puzzle correctement.")
-        ),
+        HTML("<h3 style='color: black; text-align: center;'>Bravo ! Vous avez résolu le puzzle correctement.</h3>"),
         easyClose = TRUE,
         footer = modalButton("Continuer")
       ))
     } else {
       showModal(modalDialog(
         title = "Essayez encore",
-        "Il y a des erreurs dans votre solution. Continuez à essayer !",
+        HTML("<p style='color: black;'>Il y a des erreurs dans votre solution. Continuez à essayer !</p>"),
         easyClose = TRUE,
         footer = modalButton("OK")
       ))
