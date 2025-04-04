@@ -5,7 +5,9 @@ library(shinydashboard)
 library(shinyjs)
 library(shinyWidgets)
 library(Grille2)
-library(later)
+
+# Problèmes du code :
+# 2. Les messsages de "félicitation" ou de "désolé essayez encore quand on vérifie la grille ne s'affichent pas
 
 # UI
 ui <- fluidPage(
@@ -16,6 +18,7 @@ ui <- fluidPage(
         background-color: #D8BFD8;
         color: white;
         text-align: center;
+        overflow: hidden;
         overflow-y: scroll; */ défilement vertical */
         scroll-behavior: smooth; */ défilement fluide */
       }
@@ -224,15 +227,20 @@ ui <- fluidPage(
     div(class = "game-container",
         div(class = "rules-section",
             h2("Règles du jeu Takuzu"),
-            p("Chaque cellule de la grille doit être remplie soit par un 0, soit par un 1."),
-            p("Chaque ligne et chaque colonne doivent contenir un nombre égal de 0 et de 1."),
-            p("Il est interdit d'avoir trois 0 consécutifs ou trois 1 consécutifs dans une ligne ou une colonne."),
-            p("Deux lignes ou deux colonnes identiques ne sont pas autorisées dans la même grille.\n"),
+            p("Le Takuzu est un jeu de logique qui se joue sur une grille comportant des cellules à remplir avec les chiffres 0 et 1, en respectant les règles suivantes :"),
+            ul(
+              li("Chaque cellule doit contenir soit un 0, soit un 1."),
+              li("Chaque ligne et chaque colonne doivent comporter un nombre équivalent de 0 et de 1."),
+              li("Il est interdit d’avoir plus de deux 0 ou deux 1 consécutifs dans une même ligne ou colonne."),
+              li("Deux lignes ou deux colonnes identiques sont interdites dans une même grille.")
+            ),
             h2("Stratégies pour résoudre un Takuzu"),
-            p("Éviter les triplets : si deux 0 ou deux 1 sont consécutifs, la cellule suivante doit contenir l'autre chiffre."),
-            p("Équilibrer les 0 et les 1 : une ligne ou une colonne ne peut pas contenir plus de la moitié de ses cellules avec le même chiffre."),
-            p("Comparer les lignes et les colonnes complétées : si une ligne ou
-              une colonne est presque remplie et qu'une autre est similaire, ajustez les chiffres pour éviter les doublons.")
+            p("Pour résoudre efficacement une grille de Takuzu, il est recommandé d'appliquer les stratégies suivantes :"),
+            ul(
+              li(strong("Éviter les triplets : "), "Lorsqu’une ligne ou une colonne contient déjà deux 0 ou deux 1 consécutifs, la cellule suivante doit impérativement contenir l’autre chiffre."),
+              li(strong("Assurer l’équilibre : "), "Chaque ligne et chaque colonne doivent comporter un nombre équivalent de 0 et de 1. Il faut donc éviter de dépasser cette limite lors du remplissage."),
+              li(strong("Comparer les lignes et les colonnes : "), "Lorsqu’une ligne ou une colonne est presque complétée, il convient de vérifier qu’elle ne soit pas identique à une autre déjà remplie et d’ajuster si nécessaire.")
+            )
         ),
         actionButton("back_from_rules", "Retour", class = "btn-custom")
     )
@@ -505,57 +513,68 @@ server <- function(input, output, session) {
     }
   })
 
-  afficher_modal <- function(message) {
-    showModal(modalDialog(
-      title = "Message",
-      message,
-      easyClose = TRUE,
-      footer = modalButton("OK")
-    ))
-  }
-
+  # Vérification de la grille
   observeEvent(input$check_btn, {
-    print("==> Vérification enclenchée")
-    req(game_data())  # Vérifie que game_data() est non nul
-    req(cell_values())  # Vérifie que les valeurs des cellules sont non vides
-
+    req(game_data())
     size <- grid_size()
     data <- game_data()
     values <- cell_values()
 
-    print("Valeurs des cellules :")
-    print(values)  # Pour déboguer et voir les valeurs des cellules
-
-    print("Solution correcte :")
+    # Débogage
+    print("Valeurs actuelles:")
+    print(values)
+    print("Solution attendue:")
     print(data$solution)
 
     # Vérifier que toutes les cellules sont remplies
     if (any(values == "")) {
-      print("Grille incomplète, affichage de la modal")
-
-      afficher_modal("Veuillez remplir toutes les cellules avant de vérifier.")
+      showModal(modalDialog(
+        title = "Grille incomplète",
+        HTML("<p style='color: black;'>Veuillez remplir toutes les cellules avant de vérifier.</p>"),
+        easyClose = TRUE,
+        footer = modalButton("OK")
+      ))
       return()
     }
 
     # Vérifier si la grille est valide selon les règles du Takuzu
-    correct <- identical(as.matrix(values), as.matrix(data$solution))
+    correct <- all(values == data$solution)
 
     if (correct) {
-      print("Affichage de la modal de succès")
-      afficher_modal("Bravo ! Vous avez résolu le puzzle correctement.")
-
-
+      showModal(modalDialog(
+        title = "Félicitations !",
+        HTML("<h3 style='color: black; text-align: center;'>Bravo ! Vous avez résolu le puzzle correctement.</h3>"),
+        easyClose = TRUE,
+        footer = modalButton("Continuer")
+      ))
     } else {
-      print("Affichage de la modal d'erreur")
       showModal(modalDialog(
         title = "Essayez encore",
-        "Il y a des erreurs dans votre solution. Continuez à essayer !",
+        HTML("<p style='color: black;'>Il y a des erreurs dans votre solution. Continuez à essayer !</p>"),
         easyClose = TRUE,
         footer = modalButton("OK")
       ))
     }
   })
 
+  # Nouvelle partie
+  observeEvent(input$new_game_btn, {
+    # Obtenir la taille et difficulté actuelles
+    size <- grid_size()
+    diff_level <- input$difficulty
+
+    # Générer une nouvelle grille avec la taille actuelle
+    new_data <- generate_takuzu_grid(size, diff_level)
+    game_data(new_data)
+    cell_values(new_data$grid)
+
+    # Afficher un message
+    showNotification(
+      "Nouvelle partie générée !",
+      type = "message",
+      duration = 3
+    )
+  })
 }
 
 # Lancer l'application

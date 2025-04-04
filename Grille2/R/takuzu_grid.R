@@ -82,7 +82,7 @@ generate_takuzu_grid <- function(n, difficulty) {
   initial_filled <- puzzle_grid != ""
 
   return(list(
-    grid = puzzle_grid,
+     grid = puzzle_grid,
     solution = solution,
     initial_filled = initial_filled
   ))
