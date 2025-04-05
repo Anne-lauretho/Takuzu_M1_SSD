@@ -6,8 +6,7 @@ library(shinyjs)
 library(shinyWidgets)
 library(Grille2)
 
-# Problèmes du code :
-# 2. Les messsages de "félicitation" ou de "désolé essayez encore quand on vérifie la grille ne s'affichent pas
+setwd("/home/anne-laure/Takuzu_M1_SSD/Test_Application_A")
 
 # UI
 ui <- fluidPage(
@@ -228,18 +227,30 @@ ui <- fluidPage(
         div(class = "rules-section",
             h2("Règles du jeu Takuzu"),
             p("Le Takuzu est un jeu de logique qui se joue sur une grille comportant des cellules à remplir avec les chiffres 0 et 1, en respectant les règles suivantes :"),
-            ul(
-              li("Chaque cellule doit contenir soit un 0, soit un 1."),
-              li("Chaque ligne et chaque colonne doivent comporter un nombre équivalent de 0 et de 1."),
-              li("Il est interdit d’avoir plus de deux 0 ou deux 1 consécutifs dans une même ligne ou colonne."),
-              li("Deux lignes ou deux colonnes identiques sont interdites dans une même grille.")
+            tags$ul(
+              tags$li("Chaque cellule doit contenir soit un 0, soit un 1."),
+              tags$li("Il est interdit d’avoir plus de deux 0 ou deux 1 consécutifs dans une même ligne ou colonne."),
+              tags$li("Attention, aucune ligne ou colonne ne peut être identique.")
             ),
+            h2("Exemples de grilles correctes et incorrectes"),
+            p("Voici un exemple de grille incorrecte (à gauche) où une colonne est identique à une autre, ce qui viole les règles."),
+            div(style = "display: flex; justify-content: center; gap: 40px;",
+                div(
+                  img(src = "Incorrect.png", height = "200px", width = "200px"),
+                  p("Grille incorrecte", style = "text-align: center;")
+                ),
+                div(
+                  img(src = "Correct.png", height = "200px", width = "200px"),
+                  p("Grille correcte", style = "text-align: center;")
+                )
+            ),
+            tags$hr(),
             h2("Stratégies pour résoudre un Takuzu"),
             p("Pour résoudre efficacement une grille de Takuzu, il est recommandé d'appliquer les stratégies suivantes :"),
-            ul(
-              li(strong("Éviter les triplets : "), "Lorsqu’une ligne ou une colonne contient déjà deux 0 ou deux 1 consécutifs, la cellule suivante doit impérativement contenir l’autre chiffre."),
-              li(strong("Assurer l’équilibre : "), "Chaque ligne et chaque colonne doivent comporter un nombre équivalent de 0 et de 1. Il faut donc éviter de dépasser cette limite lors du remplissage."),
-              li(strong("Comparer les lignes et les colonnes : "), "Lorsqu’une ligne ou une colonne est presque complétée, il convient de vérifier qu’elle ne soit pas identique à une autre déjà remplie et d’ajuster si nécessaire.")
+            tags$ul(
+              tags$li(strong("Éviter les triplets : "), "Lorsqu’une ligne ou une colonne contient déjà deux 0 ou deux 1 consécutifs, la cellule suivante doit impérativement contenir l’autre chiffre."),
+              tags$li(strong("Assurer l’équilibre : "), "Chaque ligne et chaque colonne doivent comporter un nombre équivalent de 0 et de 1. Il faut donc éviter de dépasser cette limite lors du remplissage."),
+              tags$li(strong("Comparer les lignes et les colonnes : "), "Lorsqu’une ligne ou une colonne est presque complétée, il convient de vérifier qu’elle ne soit pas identique à une autre déjà remplie et d’ajuster si nécessaire.")
             )
         ),
         actionButton("back_from_rules", "Retour", class = "btn-custom")
@@ -307,6 +318,7 @@ ui <- fluidPage(
 
 # Serveur
 server <- function(input, output, session) {
+
   # État du jeu actuel
   game_data <- reactiveVal(NULL)
 
@@ -579,3 +591,5 @@ server <- function(input, output, session) {
 
 # Lancer l'application
 shinyApp(ui, server)
+
+
